@@ -1,0 +1,158 @@
+import * as THREE from 'three';
+import { IScene } from './BaseScene';
+import { RoomDiorama } from '../props/RoomDiorama';
+import { StarLantern } from '../props/StarLantern';
+import { Moon } from '../props/Moon';
+import { StoryOverlay } from '../ui/StoryOverlay';
+import { CraftingUI } from '../ui/CraftingUI';
+import { StoryConfig } from '../config/StoryConfig';
+import { audioManager } from '../audio/AudioManager';
+
+export class LanternCraftingScene implements IScene {
+  public scene: THREE.Scene;
+  private camera: THREE.PerspectiveCamera;
+  private room: RoomDiorama;
+  public lantern: StarLantern;
+  private moon: Moon;
+  private overlay: StoryOverlay;
+  private craftingUI: CraftingUI;
+  private onComplete: () => void;
+
+  private currentStep: number = 0;
+  private isIgnited: boolean = false;
+  private targetCamPos: THREE.Vector3;
+  private targetCamLookAt: THREE.Vector3;
+
+  constructor(
+    camera: THREE.PerspectiveCamera,
+    overlay: StoryOverlay,
+    craftingUI: CraftingUI,
+    onComplete: () => void
+  ) {
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x020409);
+    this.scene.fog = new THREE.FogExp2(0x0a1128, 0.03);
+    this.camera = camera;
+    this.overlay = overlay;
+    this.craftingUI = craftingUI;
+    this.onComplete = onComplete;
+
+    // Room environment
+    this.room = new RoomDiorama();
+    this.scene.add(this.room.group);
+
+    // Star lantern sitting on the wooden workbench
+    this.lantern = new StarLantern();
+    this.lantern.group.position.set(0, 1.38, 0.1);
+    this.lantern.group.rotation.x = -Math.PI * 0.04;
+    this.scene.add(this.lantern.group);
+
+    // Moon positioned outside the slatted window (-X direction)
+    this.moon = new Moon();
+    this.moon.group.position.set(-10, 4.5, 0);
+    this.moon.directionalLight.position.set(-8, 5.0, 0);
+    this.moon.directionalLight.target.position.set(0, 0.85, 0.1);
+    this.scene.add(this.moon.directionalLight.target);
+    this.scene.add(this.moon.group);
+
+    // Soft midnight indigo ambient (#0a1128)
+    const ambient = new THREE.AmbientLight(0x1a2640, 0.78);
+    this.scene.add(ambient);
+
+    // Window light beam spot pointing onto the workbench
+    const moonbeamSpot = new THREE.SpotLight(0xaad0ff, 3.8, 16, Math.PI / 5, 0.4, 1.2);
+    moonbeamSpot.position.set(-4.8, 3.6, 0);
+    moonbeamSpot.target.position.set(0, 0.85, 0.1);
+    moonbeamSpot.castShadow = true;
+    moonbeamSpot.shadow.mapSize.width = 1024;
+    moonbeamSpot.shadow.mapSize.height = 1024;
+    this.scene.add(moonbeamSpot.target);
+    this.scene.add(moonbeamSpot);
+
+    // Camera initial framing: intimate view of the rustic workbench
+    this.camera.position.set(0.0, 1.9, 2.2);
+    this.camera.lookAt(0, 1.15, 0.1);
+    this.targetCamPos = this.camera.position.clone();
+    this.targetCamLookAt = new THREE.Vector3(0, 1.15, 0.1);
+  }
+
+  public init() {
+    this.currentStep = 0;
+    this.isIgnited = false;
+    this.lantern.setStep(0);
+
+    this.overlay.setSubtitle(StoryConfig.craftingSubtitles.step0, 4500);
+
+    setTimeout(() => {
+      this.craftingUI.show();
+    }, 1500);
+
+    this.craftingUI.onStepCompleted = (step: number) => {
+      this.handleStep(step);
+    };
+  }
+
+  private handleStep(step: number) {
+    this.currentStep = step;
+    this.lantern.setStep(step);
+
+    switch (step) {
+      case 1:
+        audioManager.playBambooSnap();
+        this.overlay.setSubtitle(StoryConfig.craftingSubtitles.step1, 4000);
+        break;
+      case 2:
+        audioManager.playPaperRustle();
+        this.overlay.setSubtitle(StoryConfig.craftingSubtitles.step2, 4000);
+        break;
+      case 3:
+        audioManager.playStringTie();
+        this.overlay.setSubtitle(StoryConfig.craftingSubtitles.step3, 4000);
+        break;
+      case 4:
+        this.onIgnited();
+        break;
+    }
+  }
+
+  private timerIds: number[] = [];
+
+  private onIgnited() {
+    this.isIgnited = true;
+    audioManager.playCandleIgnite();
+    this.overlay.setSubtitle(StoryConfig.craftingSubtitles.completed, 5000);
+
+    // Camera smooth glide towards the glowing hero star lantern on the workbench
+    this.targetCamPos.set(0.0, 1.55, 1.55);
+    this.targetCamLookAt.set(0, 1.38, 0.1);
+
+    const t = window.setTimeout(() => {
+      this.overlay.showNextButton("Cầm đèn bước ra ngoài hiên 🚪", () => {
+        this.overlay.hideNextButton();
+        this.onComplete();
+      });
+    }, 3800);
+    this.timerIds.push(t);
+  }
+
+  public update(delta: number, _time: number) {
+    this.lantern.update(delta);
+    this.room.update(delta);
+    this.moon.update(this.camera);
+
+    // Smooth camera lerp
+    this.camera.position.lerp(this.targetCamPos, delta * 2.0);
+    const currentLook = new THREE.Vector3();
+    this.camera.getWorldDirection(currentLook);
+    const targetDir = new THREE.Vector3().subVectors(this.targetCamLookAt, this.camera.position).normalize();
+    currentLook.lerp(targetDir, delta * 2.0);
+    this.camera.lookAt(this.camera.position.clone().add(currentLook));
+  }
+
+  public destroy() {
+    this.timerIds.forEach(id => clearTimeout(id));
+    this.timerIds = [];
+    this.craftingUI.hide();
+    this.overlay.clearSubtitle();
+  }
+}
