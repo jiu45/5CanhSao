@@ -1011,6 +1011,15 @@ export class AudioManager {
   // ===========================================================================
   private modernParkGain: GainNode | null = null;
   private modernDrumInterval: number | null = null;
+  private modernFocus = 1;
+
+  public setModernFestivalFocus(focus: number) {
+    this.modernFocus = Math.max(0.05, Math.min(1.2, focus));
+    if (this.modernParkGain && this.ctx) {
+      this.modernParkGain.gain.setTargetAtTime(0.045 * this.modernFocus,
+        this.ctx.currentTime, 0.7);
+    }
+  }
 
   public startModernAmbientAudio() {
     if (!this.ctx || this.isMuted) return;
@@ -1070,7 +1079,7 @@ export class AudioManager {
     filter.frequency.setValueAtTime(280, now);
 
     g.gain.setValueAtTime(0.001, now);
-    g.gain.linearRampToValueAtTime(0.04, now + 0.04);
+    g.gain.linearRampToValueAtTime(0.04 * this.modernFocus, now + 0.04);
     g.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
     osc.connect(filter);
@@ -1216,6 +1225,7 @@ export class AudioManager {
   private vistaAmbienceInterval: number | null = null;
   private vistaMasterGain: GainNode | null = null;
   private vistaPannerNode: StereoPannerNode | null = null;
+  private vistaFilterNode: BiquadFilterNode | null = null;
   private currentVistaPan: number = 0.8;
   private currentVistaVolume: number = 0.7;
 
@@ -1230,14 +1240,18 @@ export class AudioManager {
     // Create persistent master gain & panner nodes for smooth dynamic transition
     this.vistaMasterGain = this.ctx.createGain();
     this.vistaMasterGain.gain.setValueAtTime(this.currentVistaVolume, this.ctx.currentTime);
+    this.vistaFilterNode = this.ctx.createBiquadFilter();
+    this.vistaFilterNode.type = 'lowpass';
+    this.vistaFilterNode.frequency.setValueAtTime(12000, this.ctx.currentTime);
+    this.vistaMasterGain.connect(this.vistaFilterNode);
 
     try {
       this.vistaPannerNode = this.ctx.createStereoPanner();
       this.vistaPannerNode.pan.setValueAtTime(this.currentVistaPan, this.ctx.currentTime);
-      this.vistaMasterGain.connect(this.vistaPannerNode);
+      this.vistaFilterNode.connect(this.vistaPannerNode);
       this.vistaPannerNode.connect(this.ctx.destination);
     } catch {
-      this.vistaMasterGain.connect(this.ctx.destination);
+      this.vistaFilterNode.connect(this.ctx.destination);
     }
 
     const playRhythmicPulse = () => {
@@ -1301,6 +1315,64 @@ export class AudioManager {
     }
   }
 
+  public setFestivalVistaMuffle(cutoffHz: number) {
+    if (!this.ctx || !this.vistaFilterNode) return;
+    this.vistaFilterNode.frequency.setTargetAtTime(
+      Math.max(500, Math.min(12000, cutoffHz)), this.ctx.currentTime, 0.6);
+  }
+
+  public playPhase6Cue(kind: 'separation' | 'memory' | 'hope' | 'reunion' | 'gate') {
+    if (!this.ctx || this.isMuted) return;
+    const phrases: Record<typeof kind, number[]> = {
+      separation: [440, 392, 330],
+      memory: [523.25, 659.25, 587.33],
+      hope: [392, 523.25, 659.25],
+      reunion: [523.25, 659.25, 783.99, 1046.5],
+      gate: [659.25, 783.99, 880, 1174.66]
+    };
+    const now = this.ctx.currentTime;
+    phrases[kind].forEach((frequency, i) => {
+      const oscillator = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, now + i * 0.19);
+      const start = now + i * 0.19;
+      gain.gain.setValueAtTime(0.001, start);
+      gain.gain.linearRampToValueAtTime(kind === 'separation' ? 0.017 : 0.026,
+        start + 0.035);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.75);
+      oscillator.connect(gain);
+      gain.connect(this.ctx!.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.8);
+    });
+  }
+
+  public playPhase7Cue(kind: 'reveal' | 'intimate' | 'release' | 'moon') {
+    if (!this.ctx || this.isMuted) return;
+    if (this.ctx.state === 'suspended') void this.ctx.resume().catch(() => {});
+    const notes: Record<typeof kind, number[]> = {
+      reveal: [293.66, 440, 587.33, 739.99, 880, 1174.66],
+      intimate: [293.66, 369.99, 440, 587.33],
+      release: [493.88, 587.33, 739.99, 880, 1174.66],
+      moon: [587.33, 880, 1174.66]
+    };
+    const now = this.ctx.currentTime;
+    notes[kind].forEach((frequency, index) => {
+      const start = now + index * (kind === 'intimate' ? 0.38 : 0.22);
+      const oscillator = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+      oscillator.type = index % 3 === 0 ? 'triangle' : 'sine';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.linearRampToValueAtTime(kind === 'release' ? 0.042 :
+        kind === 'reveal' ? 0.034 : 0.021, start + 0.11);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 4.1);
+      oscillator.connect(gain); gain.connect(this.ctx!.destination);
+      oscillator.start(start); oscillator.stop(start + 4.2);
+    });
+  }
+
   public playModernFootstep() {
     if (!this.ctx || this.isMuted) return;
     const now = this.ctx.currentTime;
@@ -1327,6 +1399,7 @@ export class AudioManager {
       this.vistaMasterGain = null;
     }
     this.vistaPannerNode = null;
+    this.vistaFilterNode = null;
   }
 
   public stopModernAmbientAudio() {
@@ -1339,6 +1412,149 @@ export class AudioManager {
       clearInterval(this.modernDrumInterval);
       this.modernDrumInterval = null;
     }
+    this.modernFocus = 1;
+    this.currentVistaPan = 0.8;
+    this.currentVistaVolume = 0.7;
+  }
+
+  /**
+   * Crisp, authoritative mechanical toggle switch "TÁCH" sound.
+   * Multi-stage synthesis:
+   * 1. Contact detent transient snap (fast frequency-swept square pulse).
+   * 2. Metallic spring resonance body (dual bandpass damped sinusoids).
+   * 3. Bakelite/ABS chassis tactile thud (sub-bass lowpass thump).
+   */
+  public playMechanicalSwitchClick() {
+    if (!this.ctx || this.isMuted) return;
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    const now = this.ctx.currentTime;
+
+    // 1. Sharp detent trip transient ("TÁCH" snap)
+    const snapOsc = this.ctx.createOscillator();
+    const snapGain = this.ctx.createGain();
+    const snapFilter = this.ctx.createBiquadFilter();
+
+    snapOsc.type = 'square';
+    snapOsc.frequency.setValueAtTime(3400, now);
+    snapOsc.frequency.exponentialRampToValueAtTime(750, now + 0.016);
+
+    snapFilter.type = 'bandpass';
+    snapFilter.frequency.setValueAtTime(3100, now);
+    snapFilter.Q.setValueAtTime(4.2, now);
+
+    snapGain.gain.setValueAtTime(0.24, now);
+    snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.024);
+
+    snapOsc.connect(snapFilter);
+    snapFilter.connect(snapGain);
+    snapGain.connect(this.ctx.destination);
+    snapOsc.start(now);
+    snapOsc.stop(now + 0.028);
+
+    // 2. Metallic lever spring resonance (Internal steel spring ring)
+    const ringFreqs = [2850, 4920];
+    ringFreqs.forEach((freq, idx) => {
+      const ringOsc = this.ctx!.createOscillator();
+      const ringGain = this.ctx!.createGain();
+      const ringFilter = this.ctx!.createBiquadFilter();
+
+      ringOsc.type = 'triangle';
+      ringOsc.frequency.setValueAtTime(freq, now + 0.002);
+      ringOsc.frequency.exponentialRampToValueAtTime(freq * 0.92, now + 0.045);
+
+      ringFilter.type = 'bandpass';
+      ringFilter.frequency.value = freq;
+      ringFilter.Q.value = 8.0;
+
+      ringGain.gain.setValueAtTime(0.09 / (idx + 1), now + 0.002);
+      ringGain.gain.exponentialRampToValueAtTime(0.0008, now + 0.048);
+
+      ringOsc.connect(ringFilter);
+      ringFilter.connect(ringGain);
+      ringGain.connect(this.ctx!.destination);
+      ringOsc.start(now + 0.002);
+      ringOsc.stop(now + 0.052);
+    });
+
+    // 3. Tactile switch chassis solid thud (Bakelite/plastic body impact)
+    const thudOsc = this.ctx.createOscillator();
+    const thudGain = this.ctx.createGain();
+
+    thudOsc.type = 'sine';
+    thudOsc.frequency.setValueAtTime(175, now);
+    thudOsc.frequency.exponentialRampToValueAtTime(45, now + 0.04);
+
+    thudGain.gain.setValueAtTime(0.16, now);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+
+    thudOsc.connect(thudGain);
+    thudGain.connect(this.ctx.destination);
+    thudOsc.start(now);
+    thudOsc.stop(now + 0.05);
+  }
+
+  /**
+   * Warm wind chime / bronze chime entrance sound when companion enters room.
+   * Vietnamese Mid-Autumn pentatonic harmony: D5, F#5, A5, B5, D6
+   * Enhanced with non-integer inharmonic overtones (cast bronze physical resonance).
+   */
+  public playCompanionChime() {
+    if (!this.ctx || this.isMuted) return;
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+    const now = this.ctx.currentTime;
+
+    const bellNotes = [
+      { freq: 587.33, time: 0.00, gain: 0.075 }, // D5
+      { freq: 739.99, time: 0.09, gain: 0.070 }, // F#5
+      { freq: 880.00, time: 0.19, gain: 0.065 }, // A5
+      { freq: 987.77, time: 0.30, gain: 0.060 }, // B5
+      { freq: 1174.66, time: 0.42, gain: 0.080 }  // D6 (High radiant chime)
+    ];
+
+    bellNotes.forEach(note => {
+      const t0 = now + note.time;
+
+      // 1. Fundamental warm sine tone
+      const oscFund = this.ctx!.createOscillator();
+      const gainFund = this.ctx!.createGain();
+      oscFund.type = 'sine';
+      oscFund.frequency.setValueAtTime(note.freq, t0);
+
+      gainFund.gain.setValueAtTime(0.0001, t0);
+      gainFund.gain.linearRampToValueAtTime(note.gain, t0 + 0.006);
+      gainFund.gain.exponentialRampToValueAtTime(0.0005, t0 + 2.2);
+
+      oscFund.connect(gainFund);
+      gainFund.connect(this.ctx!.destination);
+      oscFund.start(t0);
+      oscFund.stop(t0 + 2.25);
+
+      // 2. Inharmonic bronze chime overtone (~2.76x fundamental)
+      const oscOvertone = this.ctx!.createOscillator();
+      const gainOvertone = this.ctx!.createGain();
+      oscOvertone.type = 'triangle';
+      oscOvertone.frequency.setValueAtTime(note.freq * 2.76, t0);
+
+      gainOvertone.gain.setValueAtTime(0.0001, t0);
+      gainOvertone.gain.linearRampToValueAtTime(note.gain * 0.35, t0 + 0.004);
+      gainOvertone.gain.exponentialRampToValueAtTime(0.0002, t0 + 1.4);
+
+      oscOvertone.connect(gainOvertone);
+      gainOvertone.connect(this.ctx!.destination);
+      oscOvertone.start(t0);
+      oscOvertone.stop(t0 + 1.45);
+    });
+  }
+
+  /**
+   * Backward compatibility alias for playCompanionChime
+   */
+  public playCompanionArrivalChime() {
+    this.playCompanionChime();
   }
 }
 

@@ -93,7 +93,8 @@ export class FestivalSquareScene implements IScene {
   constructor(
     camera: THREE.PerspectiveCamera,
     overlay: StoryOverlay,
-    onComplete: () => void
+    onComplete: () => void,
+    private readonly onAscentStart?: () => void
   ) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x040816);
@@ -911,6 +912,8 @@ export class FestivalSquareScene implements IScene {
             this.fadeCurtainEl.style.opacity = '1';
           }
           this.overlay.setLetterboxVisible(false, 3000);
+          // Compile the next scene beneath the existing white transition.
+          this.onAscentStart?.();
         }
 
         if (t >= 22.5 && this.sceneState === SquareSceneState.MEMORY_ASCENT) {

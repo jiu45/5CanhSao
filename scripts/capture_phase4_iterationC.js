@@ -1,6 +1,9 @@
 import puppeteer from 'puppeteer';
+import fs from 'fs';
+import path from 'path';
 
-const ARTIFACT_DIR = 'C:\\Users\\Admin\\.gemini\\antigravity\\brain\\3e507bca-0efa-4051-82db-870e761428c6';
+const ARTIFACT_DIR = process.env.ARTIFACT_DIR || path.resolve('test-artifacts');
+fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
 
 async function run() {
   const browser = await puppeteer.launch({

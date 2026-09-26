@@ -9,6 +9,7 @@
 - Keep the architecture modular.
 - Do not add unnecessary dependencies.
 - Do not use copyrighted/ripped assets.
+- For all PRESENT timeline visual work, read and follow `PRESENT_VISUAL_IDENTITY.md` before creating or modifying scenes. The present is a Modern Illuminated Papercraft Diorama, not a conventional stylized-3D world.
 
 IMPORTANT NOTES ON PRESERVING INTEGRITY (ANTI-REGRESSION & SCOPE ISOLATION):
 

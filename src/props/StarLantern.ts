@@ -21,6 +21,14 @@ export class StarLantern {
   private flameTime: number = 0;
   public isModern: boolean = false;
   private modernGlowTime: number = 0;
+  public isDeparting: boolean = false;
+  private departureElapsed: number = 0;
+  public static readonly DEPARTURE_DURATION = 2.0;
+
+  public startDeparture(): void {
+    this.isDeparting = true;
+    this.departureElapsed = 0;
+  }
 
   // Materials
   private bambooMat: THREE.MeshStandardMaterial;
@@ -358,7 +366,40 @@ export class StarLantern {
     }
   }
 
+  public setElectricLit(lit: boolean): void {
+    if (!this.isModern) return;
+    this.isLit = lit;
+    this.flameMesh.visible = false;
+    this.candleLight.intensity = lit ? 3.8 : 0.12;
+    this.paperRedMat.emissiveIntensity = lit ? 1.35 : 0.15;
+    this.paperYellowMat.emissiveIntensity = lit ? 1.65 : 0.2;
+  }
+
   public update(delta: number, windFactor: number = 0) {
+    if (this.isDeparting) {
+      this.departureElapsed += delta;
+      const progress = Math.min(1.0, this.departureElapsed / StarLantern.DEPARTURE_DURATION);
+
+      // Upward drift (delta y = +2.5m)
+      this.group.position.y += Math.pow(progress, 1.5) * delta * 2.2;
+
+      // Opacity and light decay
+      const alpha = Math.max(0.0, 1.0 - progress);
+      const lightFactor = alpha * alpha;
+
+      this.candleLight.intensity = (2.8 * lightFactor);
+      this.paperRedMat.opacity = 0.85 * alpha;
+      this.paperYellowMat.opacity = 0.85 * alpha;
+      this.bambooMat.opacity = alpha;
+      this.bambooMat.transparent = true;
+      (this.flameMat as THREE.MeshBasicMaterial).opacity = alpha;
+
+      if (progress >= 1.0) {
+        this.group.visible = false;
+      }
+      return;
+    }
+
     if (!this.isLit) return;
 
     if (this.isModern) {
@@ -394,5 +435,18 @@ export class StarLantern {
       (1 + flicker * 0.25)
     );
     this.flameMesh.rotation.z = Math.sin(this.flameTime * 2.0) * 0.05 - clampedWind * 0.62;
+  }
+
+  public dispose(): void {
+    this.group.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.geometry?.dispose();
+        if (Array.isArray(child.material)) {
+          child.material.forEach(m => m.dispose());
+        } else {
+          child.material?.dispose();
+        }
+      }
+    });
   }
 }

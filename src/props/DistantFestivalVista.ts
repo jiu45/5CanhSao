@@ -23,6 +23,13 @@ export class DistantFestivalVista {
   private festivalWashLight!: THREE.PointLight;
   private gateSpotLight!: THREE.PointLight;
   private towerCoreLight!: THREE.PointLight;
+  private phase5Darkness = 0;
+  private phase5TowerFocus = 0;
+  private wasPhase5Darkened = false;
+  private wasPhase5MaterialAdjusted = false;
+  private readonly baseLightIntensity = new Map<THREE.Light, number>();
+  private readonly baseEmissiveIntensity = new Map<THREE.MeshStandardMaterial, number>();
+  private readonly baseAdditiveOpacity = new Map<THREE.MeshBasicMaterial, number>();
 
   // Camera sightline rotation angle (facing camera along approach corridor)
   private readonly vistaRotationY = -Math.PI * 0.5 + 0.289;
@@ -30,6 +37,33 @@ export class DistantFestivalVista {
   constructor() {
     this.group = new THREE.Group();
     this.buildVista();
+    this.group.traverse(child => {
+      if (child instanceof THREE.Light) this.baseLightIntensity.set(child, child.intensity);
+      if (child instanceof THREE.Mesh) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const material of materials) {
+          if (material instanceof THREE.MeshStandardMaterial) {
+            this.baseEmissiveIntensity.set(material, material.emissiveIntensity);
+          } else if (material instanceof THREE.MeshBasicMaterial && material.blending === THREE.AdditiveBlending) {
+            this.baseAdditiveOpacity.set(material, material.opacity);
+          }
+        }
+      }
+    });
+  }
+
+  /** Phase 5 instance only: quiet the distant festival while the lanterns lead. */
+  public setPhase5Darkness(amount: number): void {
+    this.phase5Darkness = THREE.MathUtils.clamp(amount, 0, 1);
+  }
+
+  public setPhase5TowerFocus(amount: number): void {
+    this.phase5TowerFocus = THREE.MathUtils.clamp(amount, 0, 1);
+  }
+
+  public clearPhase5LanternRoute(): void {
+    // Phase 4 silhouettes occupy the exact rail used by the two lanterns.
+    this.visitorMeshes.forEach(mesh => { mesh.visible = false; });
   }
 
   private buildVista() {
@@ -167,12 +201,7 @@ export class DistantFestivalVista {
           this.group.add(fMesh);
         }
 
-        // Soft warm ground fill light every 6 steps
-        if (i % 6 === 0 && side === 1) {
-          const fLight = new THREE.PointLight(0xffbe44, 1.8, 7.5, 1.8);
-          fLight.position.set(fPos.x, fPos.y + 0.35, fPos.z);
-          this.group.add(fLight);
-        }
+        // Emissive flower colors and nearby bollard washes provide the path rhythm.
       });
     }
 
@@ -204,9 +233,7 @@ export class DistantFestivalVista {
       bHead.position.set(bPos.x, bPos.y + 0.72, bPos.z);
       this.group.add(bHead);
 
-      const bLight = new THREE.PointLight(0xffbe55, 2.2, 8.0, 1.7);
-      bLight.position.set(bPos.x, bPos.y + 0.65, bPos.z);
-      this.group.add(bLight);
+      // The emissive LED head remains visible without a light per bollard.
     }
 
     // Strolling Visitor Silhouettes & Environmental Storytelling along approach path
@@ -282,9 +309,6 @@ export class DistantFestivalVista {
     const benchLantern = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18, 0), benchLanternMat);
     benchLantern.position.set(0.65, 0.62, 0);
     benchGroup.add(benchLantern);
-    const benchLight = new THREE.PointLight(0xffbe44, 2.0, 7.0, 1.8);
-    benchLight.position.set(0.65, 0.75, 0);
-    benchGroup.add(benchLight);
     this.group.add(benchGroup);
 
     // 2. Storytelling Moment B (t = 0.62): Mid-Autumn Traditional Lantern Kiosk Cart
@@ -499,9 +523,11 @@ export class DistantFestivalVista {
       }
 
       // Trunk uplight
-      const uplight = new THREE.PointLight(0xffbe44, 3.5, 9.5, 1.5);
-      uplight.position.set(0, 0.5, 0);
-      treeGroup.add(uplight);
+      if (x < 14) {
+        const uplight = new THREE.PointLight(0xffbe44, 3.5, 9.5, 1.5);
+        uplight.position.set(0, 0.5, 0);
+        treeGroup.add(uplight);
+      }
     }
 
     this.group.add(treeGroup);
@@ -564,10 +590,7 @@ export class DistantFestivalVista {
     this.gateSpotLight.position.set(0, 9.5, 3.0);
     gateGroup.add(this.gateSpotLight);
 
-    // Coral Red accent light
-    const redAccent = new THREE.PointLight(0xf43f5e, 2.5, 22.0, 1.5);
-    redAccent.position.set(0, 15.0, 1.5);
-    gateGroup.add(redAccent);
+    // Crimson acrylic and emissive trim supply the red accent.
 
     this.group.add(gateGroup);
   }
@@ -619,15 +642,7 @@ export class DistantFestivalVista {
     this.festivalWashLight.position.set(0, 8.0, 0);
     plazaGroup.add(this.festivalWashLight);
 
-    // Coral-Red Plaza Wash
-    const coralWash = new THREE.PointLight(0xf43f5e, 4.5, 65.0, 1.4);
-    coralWash.position.set(-12.0, 7.0, 6.0);
-    plazaGroup.add(coralWash);
-
-    // Golden ambient fill light on plaza entrance
-    const entranceFill = new THREE.PointLight(0xfbbf24, 3.8, 55.0, 1.3);
-    entranceFill.position.set(-22.0, 6.0, 0.0);
-    plazaGroup.add(entranceFill);
+    // The broad hero wash reaches the entrance; decorative lamps stay emissive.
 
     // Flanking 3D Glowing Lantern Towers around plaza perimeter
     const towerCoords = [
@@ -861,15 +876,7 @@ export class DistantFestivalVista {
     this.towerCoreLight.position.set(0, 8.0, 0);
     this.revolvingTowerGroup.add(this.towerCoreLight);
 
-    // Coral Red accent light
-    const towerRedAccent = new THREE.PointLight(0xf43f5e, 4.5, 38.0, 1.3);
-    towerRedAccent.position.set(0, 12.5, 0);
-    this.revolvingTowerGroup.add(towerRedAccent);
-
-    // Uplight from base pedestal
-    const baseUplight = new THREE.PointLight(0xffbe44, 4.0, 24.0, 1.4);
-    baseUplight.position.set(0, 2.2, 0);
-    this.revolvingTowerGroup.add(baseUplight);
+    // Paper and LED surfaces paint the remaining warm and coral tower accents.
 
     this.group.add(this.revolvingTowerGroup);
   }
@@ -989,11 +996,36 @@ export class DistantFestivalVista {
 
     // 5. Festival wash light dynamic energy flicker
     if (this.festivalWashLight) {
-      this.festivalWashLight.intensity = 15.0 + Math.sin(time * 4.0) * 0.8;
+      this.festivalWashLight.intensity = (15.0 + Math.sin(time * 4.0) * 0.8) *
+        (1 - this.phase5TowerFocus * 0.4);
     }
     if (this.towerCoreLight) {
-      this.towerCoreLight.intensity = 18.0 + Math.sin(time * 3.2) * 1.1;
+      this.towerCoreLight.intensity = (18.0 + Math.sin(time * 3.2) * 1.1) *
+        (1 - this.phase5TowerFocus * 0.68);
     }
+
+    const needsMaterialUpdate = this.phase5Darkness > 0 || this.phase5TowerFocus > 0 || this.wasPhase5MaterialAdjusted;
+    if (this.phase5Darkness > 0) {
+      this.wasPhase5Darkened = true;
+      const lightFactor = 1 - this.phase5Darkness * 0.88;
+      for (const [light, base] of this.baseLightIntensity) {
+        const animated = light === this.festivalWashLight || light === this.towerCoreLight;
+        light.intensity = (animated ? light.intensity : base) * lightFactor;
+      }
+    } else if (this.wasPhase5Darkened) {
+      for (const [light, base] of this.baseLightIntensity) {
+        if (light !== this.festivalWashLight && light !== this.towerCoreLight) light.intensity = base;
+      }
+      this.wasPhase5Darkened = false;
+    }
+    if (!needsMaterialUpdate) return;
+    this.wasPhase5MaterialAdjusted = this.phase5Darkness > 0 || this.phase5TowerFocus > 0;
+    const emissiveFactor = (1 - this.phase5Darkness * 0.82) * (1 - this.phase5TowerFocus * 0.68);
+    for (const [material, base] of this.baseEmissiveIntensity) {
+      const towerDrumFactor = material === this.revolvingDrum.material ? 1 - this.phase5TowerFocus * 0.52 : 1;
+      material.emissiveIntensity = base * emissiveFactor * towerDrumFactor;
+    }
+    for (const [material, base] of this.baseAdditiveOpacity) material.opacity = base * emissiveFactor;
   }
 
   /**

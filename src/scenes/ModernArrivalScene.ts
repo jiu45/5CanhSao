@@ -44,6 +44,7 @@ export class ModernArrivalScene implements IScene {
   private isVistaRevealed: boolean = false;
   private vistaTimer: number = 0;
   private finalButtonShown: boolean = false;
+  private visualsPrepared = false;
 
   // Phase 4C: Approach the Festival
   public isApproaching: boolean = false;
@@ -124,29 +125,21 @@ export class ModernArrivalScene implements IScene {
     this.lantern.group.scale.setScalar(0.34);
     this.scene.add(this.lantern.group);
 
-    // Initialize camera position exactly at Phase 3C handoff
-    this.camera.position.copy(this.handoffCamPos);
-    this.camera.up.set(0, 1, 0);
-    this.camera.lookAt(this.handoffLookAt);
   }
 
   public init() {
+    // Keep the Phase 3 camera untouched while this scene is prepared in advance.
+    this.camera.position.copy(this.handoffCamPos);
+    this.camera.up.set(0, 1, 0);
+    this.camera.lookAt(this.handoffLookAt);
     // Dynamically extend camera far plane for distant vista sightlines (reverted in destroy)
     this.prevCameraFar = this.camera.far;
     this.camera.far = 350;
     this.camera.updateProjectionMatrix();
 
     this.tuneBloomSettings();
-    this.setupLighting();
-    this.createElevatedTerraceKnoll();
-    this.createPlayerAvatar();
-    this.createMidgroundPark();
-    this.createDistantFestival();
+    this.prepareVisuals();
     this.createSoftTransitionVeil();
-
-    // Isolated Distant Festival Vista (Phase 4B/4C - ~75° right of primary Moon axis)
-    this.distantFestivalVista = new DistantFestivalVista();
-    this.scene.add(this.distantFestivalVista.group);
 
     // Start modern ambient audio: park night wind + distant festive drum beats
     audioManager.startModernAmbientAudio();
@@ -163,6 +156,19 @@ export class ModernArrivalScene implements IScene {
       }
     };
     window.addEventListener('keydown', this.boundOnKeyDown);
+  }
+
+  /** Build once during Memory Ascent; init retains the same objects at handoff. */
+  public prepareVisuals(): void {
+    if (this.visualsPrepared) return;
+    this.visualsPrepared = true;
+    this.setupLighting();
+    this.createElevatedTerraceKnoll();
+    this.createPlayerAvatar();
+    this.createMidgroundPark();
+    this.createDistantFestival();
+    this.distantFestivalVista = new DistantFestivalVista();
+    this.scene.add(this.distantFestivalVista.group);
   }
 
   private tuneBloomSettings() {
@@ -203,7 +209,7 @@ export class ModernArrivalScene implements IScene {
       height: 100vh;
       background: radial-gradient(circle at 50% 38%, rgba(244, 246, 250, 0.96) 0%, rgba(220, 230, 248, 0.98) 55%, rgba(180, 200, 230, 1.0) 100%);
       pointer-events: none;
-      z-index: 9998;
+      z-index: 25;
       opacity: 1;
       transition: opacity 3.5s cubic-bezier(0.25, 1, 0.5, 1);
     `;
@@ -262,7 +268,7 @@ export class ModernArrivalScene implements IScene {
 
     // 7. Contemporary Park Lamp Posts on Terrace
     this.createModernLampPost(-1.6, 1.56, 3.6);
-    this.createModernLampPost(2.0, 1.56, 4.85);
+    this.createModernLampPost(2.0, 1.56, 4.85, false);
 
     // 8. Ornamental shrubbery along terrace rim
     this.createShrubCluster(-2.1, 1.55, 4.0);
@@ -318,7 +324,7 @@ export class ModernArrivalScene implements IScene {
     const topLipMesh = new THREE.Mesh(new THREE.TubeGeometry(topLipCurve, numSegs, 0.015, 8, false), topLipLedMat);
     this.modernArrivalGroup.add(topLipMesh);
 
-    stepTiers.forEach((sd) => {
+    stepTiers.forEach((sd, index) => {
       // 1. Solid Curved Stone Step Slab via ExtrudeGeometry
       const shape = new THREE.Shape();
       for (let i = 0; i <= numSegs; i++) {
@@ -364,9 +370,7 @@ export class ModernArrivalScene implements IScene {
       this.modernArrivalGroup.add(ledMesh);
 
       // 3. Warm ambient step wash light
-      const stepWashLight = new THREE.PointLight(0xffbe44, 0.65, 3.5, 2.0);
-      stepWashLight.position.set(0, sd.topY + 0.25, 4.2 - sd.outerR + 0.35);
-      this.modernArrivalGroup.add(stepWashLight);
+      // The luminous step lip supplies this small pool without a per-tier light.
     });
   }
 
@@ -561,7 +565,7 @@ export class ModernArrivalScene implements IScene {
     this.modernArrivalGroup.add(benchGroup);
   }
 
-  private createModernLampPost(x: number, y: number, z: number) {
+  private createModernLampPost(x: number, y: number, z: number, lit = true) {
     const lampGroup = new THREE.Group();
     lampGroup.position.set(x, y, z);
 
@@ -595,10 +599,12 @@ export class ModernArrivalScene implements IScene {
     lampGroup.add(emitter);
 
     // PointLight casting warm golden illumination on the ground
-    const lampLight = new THREE.PointLight(0xffbe6b, 2.6, 14, 1.4);
-    lampLight.position.set(x, y + 3.1, z);
-    this.modernArrivalGroup.add(lampLight);
-    this.parkLampLights.push(lampLight);
+    if (lit) {
+      const lampLight = new THREE.PointLight(0xffbe6b, 2.6, 14, 1.4);
+      lampLight.position.set(x, y + 3.1, z);
+      this.modernArrivalGroup.add(lampLight);
+      this.parkLampLights.push(lampLight);
+    }
 
     this.modernArrivalGroup.add(lampGroup);
   }
@@ -691,8 +697,8 @@ export class ModernArrivalScene implements IScene {
       { x: 3.8, y: 0.0, z: -30 },
       { x: -3.8, y: 0.0, z: -38 }
     ];
-    lampPositions.forEach(pos => {
-      this.createModernLampPost(pos.x, pos.y, pos.z);
+    lampPositions.forEach((pos, index) => {
+      this.createModernLampPost(pos.x, pos.y, pos.z, index === 2);
     });
 
     // 5. Landscaped Ornamental Trees with TRUE Base Uplighting (Warm amber & cyan)
@@ -705,8 +711,8 @@ export class ModernArrivalScene implements IScene {
       { x: -7.5, z: -32, scale: 1.35 },
       { x: 7.4, z: -36, scale: 1.3 }
     ];
-    treePositions.forEach(tp => {
-      this.createLandscapedParkTree(tp.x, tp.z, tp.scale);
+    treePositions.forEach((tp, index) => {
+      this.createLandscapedParkTree(tp.x, tp.z, tp.scale, index);
     });
 
     // 6. Contemporary Park Visitors strolling peacefully along promenade (1.7m - 1.8m human scale)
@@ -734,9 +740,7 @@ export class ModernArrivalScene implements IScene {
       this.parkVisitorMeshes.push(visitorMesh);
 
       // Subtle warm lantern point light carried by family
-      const familyLanternLight = new THREE.PointLight(0xffaa44, 2.0, 7.5, 1.8);
-      familyLanternLight.position.set(vp.x + 0.35, vp.y + 0.2, vp.z);
-      this.modernArrivalGroup.add(familyLanternLight);
+      // The illustrated lantern glow is already painted into the visitor card.
     });
   }
 
@@ -790,17 +794,12 @@ export class ModernArrivalScene implements IScene {
       }
     }
 
-    // Low, gentle accent ground wash lights along the planter border (every 10m)
-    for (let z = zStart - 4; z > zEnd; z -= 10) {
-      const planterLight = new THREE.PointLight(0xffbe6b, 1.4, 5.0, 1.8);
-      planterLight.position.set(x + (isRight ? 0.4 : -0.4), 0.35, z);
-      bedGroup.add(planterLight);
-    }
+    // Blossom emissive color and bloom supply the repeated planter light rhythm.
 
     this.modernArrivalGroup.add(bedGroup);
   }
 
-  private createLandscapedParkTree(x: number, z: number, scale: number) {
+  private createLandscapedParkTree(x: number, z: number, scale: number, index: number) {
     const treeGroup = new THREE.Group();
     treeGroup.position.set(x, 0, z);
     treeGroup.scale.setScalar(scale);
@@ -923,14 +922,14 @@ export class ModernArrivalScene implements IScene {
     }
 
     // Ground spotlight (TRUE UPLIGHT): Warm amber beam illuminating underside of foliage
-    const warmUplight = new THREE.PointLight(0xffbe40, 4.2, 11, 1.6);
-    warmUplight.position.set(x + 0.2, 0.4, z + 0.2);
-    this.modernArrivalGroup.add(warmUplight);
+    if (index === 3) {
+      const warmUplight = new THREE.PointLight(0xffbe40, 4.2, 11, 1.6);
+      warmUplight.position.set(x + 0.2, 0.4, z + 0.2);
+      this.modernArrivalGroup.add(warmUplight);
+    }
 
     // Secondary subtle cyan accent uplight on opposite side
-    const cyanUplight = new THREE.PointLight(0x38bdf8, 2.2, 8, 2.0);
-    cyanUplight.position.set(x - 0.3, 0.35, z - 0.2);
-    this.modernArrivalGroup.add(cyanUplight);
+    // Cool foliage contrast remains in the layered canopy material.
 
     this.modernArrivalGroup.add(treeGroup);
   }
@@ -1044,19 +1043,7 @@ export class ModernArrivalScene implements IScene {
     this.giantMoonLight.position.set(0, 1.8, -49.5);
     this.distantFestivalGroup.add(this.giantMoonLight);
 
-    const festivalPlazaLight = new THREE.PointLight(0xff7700, 5.0, 70, 1.3);
-    festivalPlazaLight.position.set(0, 0.8, -46.0);
-    this.distantFestivalGroup.add(festivalPlazaLight);
-
-    // Wide atmospheric horizon fill light
-    const horizonDomeLight = new THREE.PointLight(0xff9426, 6.0, 85, 1.4);
-    horizonDomeLight.position.set(0, 3.0, -50.0);
-    this.distantFestivalGroup.add(horizonDomeLight);
-
-    // Eastern hill festival glow (hinting at Grand Festival Square in Iteration B)
-    const easternFestivalGlow = new THREE.PointLight(0xffaa33, 4.2, 70, 1.4);
-    easternFestivalGlow.position.set(32.0, 4.0, 0.0);
-    this.distantFestivalGroup.add(easternFestivalGlow);
+    // Painted horizon and emissive architecture preserve the distant color field.
   }
 
   public update(delta: number, time: number) {

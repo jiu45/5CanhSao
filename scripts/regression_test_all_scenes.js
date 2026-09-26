@@ -1,6 +1,9 @@
 import puppeteer from 'puppeteer';
+import fs from 'node:fs';
+import path from 'node:path';
 
-const ARTIFACT_DIR = 'C:\\Users\\Admin\\.gemini\\antigravity\\brain\\3e507bca-0efa-4051-82db-870e761428c6';
+const ARTIFACT_DIR = process.env.ARTIFACT_DIR || path.resolve('test-artifacts');
+fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
 
 async function run() {
   const browser = await puppeteer.launch({
@@ -22,7 +25,7 @@ async function run() {
   await new Promise(r => setTimeout(r, 1200));
 
   await page.screenshot({
-    path: `${ARTIFACT_DIR}\\regression_01_lantern_crafting_start.png`
+    path: path.join(ARTIFACT_DIR, 'regression_01_lantern_crafting_start.png')
   });
   console.log('Captured: regression_01_lantern_crafting_start.png');
 
@@ -36,7 +39,7 @@ async function run() {
   await new Promise(r => setTimeout(r, 800));
 
   await page.screenshot({
-    path: `${ARTIFACT_DIR}\\regression_01_lantern_crafting_candle_lit.png`
+    path: path.join(ARTIFACT_DIR, 'regression_01_lantern_crafting_candle_lit.png')
   });
   console.log('Captured: regression_01_lantern_crafting_candle_lit.png');
 
@@ -48,7 +51,7 @@ async function run() {
   await new Promise(r => setTimeout(r, 1500));
 
   await page.screenshot({
-    path: `${ARTIFACT_DIR}\\regression_02_door_reveal.png`
+    path: path.join(ARTIFACT_DIR, 'regression_02_door_reveal.png')
   });
   console.log('Captured: regression_02_door_reveal.png');
 
@@ -61,7 +64,7 @@ async function run() {
 
   // Bamboo path start
   await page.screenshot({
-    path: `${ARTIFACT_DIR}\\regression_03_village_walk_bamboo_start.png`
+    path: path.join(ARTIFACT_DIR, 'regression_03_village_walk_bamboo_start.png')
   });
   console.log('Captured: regression_03_village_walk_bamboo_start.png');
 
@@ -77,7 +80,7 @@ async function run() {
   await new Promise(r => setTimeout(r, 1000));
 
   await page.screenshot({
-    path: `${ARTIFACT_DIR}\\regression_03_village_walk_vignette_family.png`
+    path: path.join(ARTIFACT_DIR, 'regression_03_village_walk_vignette_family.png')
   });
   console.log('Captured: regression_03_village_walk_vignette_family.png');
 
@@ -89,7 +92,7 @@ async function run() {
   await new Promise(r => setTimeout(r, 3600));
 
   await page.screenshot({
-    path: `${ARTIFACT_DIR}\\regression_04_festival_square_spectator_lighting.png`
+    path: path.join(ARTIFACT_DIR, 'regression_04_festival_square_spectator_lighting.png')
   });
   console.log('Captured: regression_04_festival_square_spectator_lighting.png');
 

@@ -22,13 +22,22 @@ export class Game {
     );
     this.clock = new THREE.Clock();
 
-    // Check URL query parameters for fast scene jumping during testing
+    // Check URL query parameters for fast scene jumping and multiplayer room invites
     const params = new URLSearchParams(window.location.search);
     const sceneParam = params.get('scene');
-    const startScene = sceneParam !== null ? parseInt(sceneParam, 10) : GameSceneId.TIME_TRAVEL;
+    const roomParam = params.get('room');
+
+    let startScene: GameSceneId = GameSceneId.TIME_TRAVEL;
+    if (sceneParam !== null) {
+      const parsed = parseInt(sceneParam, 10);
+      startScene = isNaN(parsed) ? GameSceneId.TIME_TRAVEL : (parsed as GameSceneId);
+    } else if (roomParam && roomParam.trim().length > 0) {
+      // Intercept ?room= to launch Cooperative Festival scene directly
+      startScene = GameSceneId.COOPERATIVE_FESTIVAL;
+    }
 
     // Start with requested Scene or default Scene 0 (Time Travel)
-    this.sceneManager.goToScene(isNaN(startScene) ? GameSceneId.TIME_TRAVEL : startScene);
+    this.sceneManager.goToScene(startScene);
 
     // Expose for automated browser inspection
     (window as unknown as { game: Game; sceneManager: SceneManager }).game = this;
@@ -39,8 +48,6 @@ export class Game {
   }
 
   private animate() {
-    requestAnimationFrame(this.animate);
-
     const delta = Math.min(this.clock.getDelta(), 0.1);
     const elapsedTime = this.clock.getElapsedTime();
 
@@ -50,5 +57,6 @@ export class Game {
     if (activeScene) {
       this.renderer.render(activeScene);
     }
+    if (!this.sceneManager.isTerminal()) requestAnimationFrame(this.animate);
   }
 }
