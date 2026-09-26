@@ -252,6 +252,7 @@ async function runPhase5MultiplayerTest() {
     // -------------------------------------------------------------------------
     // STEP 3: 3RD PLAYER REJECTION TEST (TIER 2 BOUNDARY TEST)
     // -------------------------------------------------------------------------
+    if (!process.argv.includes('--two-player')) {
     logStep(3, 8, 'Third player attempts join and receives rejection modal (Tier 2 Boundary)');
     const thirdInstance = await launchTestBrowser('3RD_PLAYER');
     browserC = thirdInstance.browser;
@@ -289,6 +290,7 @@ async function runPhase5MultiplayerTest() {
     browserC = null;
     logInfo('Browser C cleanly disconnected.');
     testResults.push({ step: '3. 3rd Player Rejection Isolation', status: 'PASS' });
+    }
 
     // -------------------------------------------------------------------------
     // STEP 4: RAIL MOVEMENT & FLOATING IDLE STATE (TIER 1 & TIER 3)

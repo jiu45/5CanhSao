@@ -1,5 +1,11 @@
 import * as THREE from 'three';
 import { INNER_GATE_POSITION, PHASE6_ROUTES, Phase6RouteId } from '../scenes/Phase6Routes';
+import { PresentCrowdKit } from './papercraft/PresentCrowdKit';
+import { PapercraftFoliageKit } from './papercraft/PapercraftFoliageKit';
+import { MarketStallKit } from './papercraft/MarketStallKit';
+import { CeremonialCharacterKit } from './papercraft/CeremonialCharacterKit';
+import { FestivalLanternDecorKit } from './papercraft/FestivalLanternDecorKit';
+import { IllustratedFacadeKit } from './papercraft/IllustratedFacadeKit';
 
 const gold = new THREE.MeshStandardMaterial({ color: 0xd99a47, roughness: 0.65, emissive: 0x5b2e0d, emissiveIntensity: 0.35 });
 const wood = new THREE.MeshStandardMaterial({ color: 0x593b39, roughness: 0.85 });
@@ -8,6 +14,18 @@ const stone = new THREE.MeshStandardMaterial({ color: 0x343c4c, roughness: 1 });
 
 const box = (w: number, h: number, d: number, material: THREE.Material) =>
   new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+
+const crestStar = (() => {
+  const shape = new THREE.Shape();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5;
+    const r = i % 2 ? 0.13 : 0.29;
+    if (i === 0) shape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    else shape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  }
+  shape.closePath();
+  return new THREE.ExtrudeGeometry(shape, { depth: 0.045, bevelEnabled: false });
+})();
 
 function pavingTexture(): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -71,69 +89,14 @@ function pavedJunction(x: number, z: number, radius: number,
   return mesh;
 }
 
-const visitorTorso = new THREE.CylinderGeometry(0.25, 0.18, 0.72, 7);
-const visitorHead = new THREE.SphereGeometry(0.21, 9, 7);
-const visitorLimb = new THREE.CylinderGeometry(0.065, 0.075, 0.66, 6);
-const visitorStar = (() => {
-  const shape = new THREE.Shape();
-  for (let i = 0; i < 10; i++) {
-    const a = -Math.PI / 2 + i * Math.PI / 5;
-    const r = i % 2 ? 0.13 : 0.29;
-    if (i === 0) shape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
-    else shape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-  }
-  shape.closePath();
-  return new THREE.ExtrudeGeometry(shape, { depth: 0.045, bevelEnabled: false });
-})();
-const visitorGlow = new THREE.MeshStandardMaterial({
-  color: 0xffd58a, emissive: 0xffa42c, emissiveIntensity: 2.2,
-  roughness: 0.65, side: THREE.DoubleSide
-});
-
-function silhouette(x: number, z: number, scale = 1, color = 0x23344d,
-  prop: 'none' | 'star' | 'balloon' | 'round' = 'none', detailed = false): THREE.Group {
-  const group = new THREE.Group();
-  group.position.set(x, 0, z);
-  group.scale.setScalar(scale);
-  const material = new THREE.MeshStandardMaterial({ color, roughness: 1 });
-  const torso = new THREE.Mesh(visitorTorso, material); torso.position.y = 1.1;
-  const head = new THREE.Mesh(visitorHead, material); head.position.y = 1.72;
-  const leftLeg = new THREE.Mesh(visitorLimb, material); leftLeg.position.set(-0.11, 0.38, 0);
-  const rightLeg = new THREE.Mesh(visitorLimb, material); rightLeg.position.set(0.11, 0.38, 0);
-  group.add(torso, head, leftLeg, rightLeg);
-  if (detailed || prop !== 'none') {
-    const leftArm = new THREE.Mesh(visitorLimb, material);
-    leftArm.position.set(-0.31, 1.0, 0);
-    leftArm.rotation.z = -0.22;
-    group.add(leftArm);
-    const rightArm = new THREE.Group();
-    rightArm.position.set(0.28, 1.35, 0);
-    const sleeve = new THREE.Mesh(visitorLimb, material);
-    sleeve.position.set(0.16, -0.28, 0);
-    sleeve.rotation.z = -0.42;
-    rightArm.add(sleeve);
-    group.add(rightArm);
-    group.userData.arm = rightArm;
-    if (prop !== 'none') {
-      const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012,
-        prop === 'balloon' ? 1.2 : 0.32, 5), gold);
-      handle.position.set(0.43, prop === 'balloon' ? 0.53 : -0.19, 0.02);
-      rightArm.add(handle);
-      const light = prop === 'star'
-        ? new THREE.Mesh(visitorStar, visitorGlow)
-        : new THREE.Mesh(new THREE.SphereGeometry(prop === 'balloon' ? 0.24 : 0.20, 10, 8),
-          visitorGlow);
-      light.position.set(0.43, prop === 'balloon' ? 1.14 : -0.36, 0.02);
-      rightArm.add(light);
-    }
-  }
-  group.userData.baseX = x;
-  group.userData.baseZ = z;
-  return group;
-}
-
 /** Phase 6: Spatial promenade, secluded Moon Alcove, and guarded Inner Gate. */
 export class FestivalPromenadeSet {
+  private readonly crowdKit = new PresentCrowdKit();
+  private readonly foliageKit = new PapercraftFoliageKit();
+  private readonly marketKit = new MarketStallKit();
+  private readonly characterKit = new CeremonialCharacterKit();
+  private readonly lanternKit = new FestivalLanternDecorKit();
+  private readonly facadeKit = new IllustratedFacadeKit();
   public readonly group = new THREE.Group();
   public readonly gateSockets: [THREE.Mesh, THREE.Mesh];
   public readonly gatePanel: THREE.Group;
@@ -163,6 +126,11 @@ export class FestivalPromenadeSet {
   private gateActivation = 0;
   private gateRevealProgress = 0;
   private readonly roadTexture = pavingTexture();
+
+  private silhouette(x: number, z: number, scale = 1, color = 0x23344d,
+    prop: 'none' | 'star' | 'balloon' | 'round' = 'none', detailed = false): THREE.Group {
+    return this.crowdKit.createActor(x, z, scale, color, prop, detailed);
+  }
 
   constructor() {
     const ground = new THREE.Mesh(new THREE.PlaneGeometry(280, 240),
@@ -200,6 +168,7 @@ export class FestivalPromenadeSet {
 
     this.buildPavilion();
     this.buildStalls();
+    this.buildBackgroundFacades();
     this.buildPromenadeTrees();
     this.buildLanternStrings();
     this.buildFlowerEdges();
@@ -216,14 +185,14 @@ export class FestivalPromenadeSet {
       const t = 0.3 + (i / 22) * 0.68;
       const p = PHASE6_ROUTES.route_shared.getPointAt(t);
       const side = i % 2 === 0 ? 5 + (i % 3) : -5 - (i % 3);
-      const actor = silhouette(p.x + side * 0.4, p.z + side * 0.7,
+      const actor = this.silhouette(p.x + side * 0.4, p.z + side * 0.7,
         0.75 + (i % 4) * 0.1, i % 3 === 0 ? 0x483746 : 0x26364b,
-        i % 5 === 0 ? 'round' : 'none');
+        i % 4 === 0 ? 'round' : i % 4 === 1 ? 'star' : 'none');
       actor.visible = false;
       this.midCrowd.push(actor); this.group.add(actor);
     }
     for (let i = 0; i < 8; i++) {
-      const actor = silhouette(130 + (i % 4) * 2.8, -48 - Math.floor(i / 4) * 8,
+      const actor = this.silhouette(130 + (i % 4) * 2.8, -48 - Math.floor(i / 4) * 8,
         i % 3 === 0 ? 0.72 : 1, i % 4 === 0 ? 0x4c3949 : 0x263449,
         i % 3 === 0 ? 'star' : i % 3 === 1 ? 'balloon' : 'round', true);
       actor.visible = false; this.nearCrowd.push(actor); this.group.add(actor);
@@ -238,13 +207,13 @@ export class FestivalPromenadeSet {
         const tangent = route.getTangentAt(t);
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
         p.addScaledVector(normal, i % 2 ? -2.8 : 2.8);
-        const actor = silhouette(p.x, p.z, 0.7 + (i % 4) * 0.13,
-          i % 3 ? 0x27344b : 0x4a394b, i % 4 === 0 ? 'star' : 'none');
+        const actor = this.silhouette(p.x, p.z, 0.7 + (i % 4) * 0.13,
+          i % 3 ? 0x27344b : 0x4a394b, i % 3 === 0 ? 'star' : i % 3 === 1 ? 'round' : 'none');
         actor.visible = false; this.splitCrowd.push(actor); this.group.add(actor);
       }
     }
 
-    const farMaterial = new THREE.MeshBasicMaterial({ color: 0x1d2a3a, fog: true });
+    const farMaterial = this.crowdKit.createFarMaterial();
     this.farCrowd = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.7, 2), farMaterial, 56);
     const dummy = new THREE.Object3D();
     for (let i = 0; i < 56; i++) {
@@ -259,8 +228,12 @@ export class FestivalPromenadeSet {
     // Occlusion band crossing at separation checkpoint (136, -54)
     for (let row = 0; row < 3; row++) {
       const band = new THREE.Group();
+      const crossingSheet = this.crowdKit.createCrossingSheet();
+      crossingSheet.scale.multiplyScalar(row === 1 ? 1.05 : 0.88);
+      crossingSheet.position.set(0.1, 0.02, row * 0.2);
+      band.add(crossingSheet);
       for (let i = 0; i < 6; i++) {
-        const visitor = silhouette((i % 2) * 0.65, (i - 2.5) * 1.1,
+        const visitor = this.silhouette((i % 2) * 0.65, (i - 2.5) * 1.1,
           i % 3 === 0 ? 0.76 : 0.96, i % 2 ? 0x222f43 : 0x433640,
           i === 1 || i === 4 ? 'star' : 'none');
         band.add(visitor);
@@ -277,18 +250,25 @@ export class FestivalPromenadeSet {
     for (const x of [-2.7, 2.7]) for (const z of [-1.8, 1.8]) {
       const post = box(0.2, 3.1, 0.2, wood); post.position.set(x, 1.6, z); pavilion.add(post);
     }
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(4.2, 1.25, 4), cloth);
-    roof.rotation.y = Math.PI / 4; roof.scale.z = 0.82; roof.position.y = 3.35; pavilion.add(roof);
+    const roofMat = new THREE.MeshStandardMaterial({ color: 0x493a43, roughness: 0.9 });
+    for (const side of [-1, 1]) {
+      const eave = box(3.65, 0.12, 5.5, roofMat);
+      eave.position.set(side * 1.66, 3.48, 0);
+      eave.rotation.z = side * -0.17;
+      pavilion.add(eave);
+      const edge = box(3.5, 0.055, 0.08, gold);
+      edge.position.set(side * 1.68, 3.08, 2.74);
+      edge.rotation.z = side * -0.17;
+      pavilion.add(edge);
+    }
+    const valance = new THREE.Mesh(new THREE.PlaneGeometry(6.7, 0.48), cloth);
+    valance.position.set(0, 2.98, 2.78); pavilion.add(valance);
     const table = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.17, 12), wood);
     table.position.set(0, 0.85, 0); pavilion.add(table);
     const tea = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.16, 0.24, 8), gold);
     tea.position.set(0, 1.05, 0); pavilion.add(tea);
-    const elder = silhouette(-1.55, 0.2, 0.95, 0x665358, 'none', true);
-    const silverHair = new THREE.Mesh(new THREE.SphereGeometry(0.22, 9, 7),
-      new THREE.MeshStandardMaterial({ color: 0xc8bca8, roughness: 1 }));
-    silverHair.position.y = 1.79;
-    silverHair.scale.set(1.06, 0.58, 1.06);
-    elder.add(silverHair);
+    const elder = this.characterKit.create('elder');
+    elder.position.set(-1.55, 0.2, 0.2);
     pavilion.add(elder);
     const bench = box(2.2, 0.35, 0.55, wood); bench.position.set(-1.7, 0.45, 0.5); pavilion.add(bench);
     const lantern = new THREE.Mesh(new THREE.SphereGeometry(0.38, 10, 8),
@@ -308,23 +288,39 @@ export class FestivalPromenadeSet {
   }
 
   private buildStalls(): void {
-    const positions: [number, number, number][] = [[108, -35, 1], [140, -62, -1]];
-    positions.forEach(([x, z, side], index) => {
-      const stall = new THREE.Group(); stall.position.set(x, 0, z + side * 5);
-      const counter = box(3.5, 1.2, 1.8, wood); counter.position.y = 0.65; stall.add(counter);
-      const awning = box(4.1, 0.18, 2.2, index % 2 ? cloth : gold);
-      awning.position.y = 2.5; stall.add(awning);
-      for (const dx of [-1.7, 1.7]) {
-        const post = box(0.12, 2.1, 0.12, wood); post.position.set(dx, 1.65, 0); stall.add(post);
-      }
+    const route = PHASE6_ROUTES[Phase6RouteId.shared];
+    for (const [t, side, variant] of [[0.27, -1, 0], [0.39, 1, 1],
+      [0.72, -1, 2], [0.83, 1, 3]] as const) {
+      const p = route.getPointAt(t);
+      const tangent = route.getTangentAt(t);
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const stall = this.marketKit.create(variant);
+      stall.position.copy(p).addScaledVector(normal, side * 8.2);
+      stall.position.y = 0;
+      stall.rotation.y = Math.atan2(-normal.x * side, -normal.z * side);
       this.group.add(stall);
-    });
+    }
+  }
+
+  private buildBackgroundFacades(): void {
+    const route = PHASE6_ROUTES[Phase6RouteId.shared];
+    for (const [t, side, variant] of [[0.22, -1, 0], [0.34, 1, 1],
+      [0.5, -1, 2], [0.63, 1, 3], [0.76, -1, 1], [0.87, 1, 0]] as const) {
+      const p = route.getPointAt(t);
+      const tangent = route.getTangentAt(t);
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const facade = this.facadeKit.create(variant);
+      facade.position.copy(p).addScaledVector(normal, side * 14);
+      facade.position.y = -0.12;
+      facade.rotation.y = Math.atan2(-normal.x * side, -normal.z * side);
+      facade.scale.setScalar(0.82 + (variant % 2) * 0.06);
+      this.group.add(facade);
+    }
   }
 
   private buildPromenadeTrees(): void {
     const route = PHASE6_ROUTES[Phase6RouteId.shared];
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x302c2a, roughness: 1 });
-    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x132b29, roughness: 1 });
     const bulbMat = new THREE.MeshStandardMaterial({
       color: 0xffe8aa, emissive: 0xffbc51, emissiveIntensity: 2
     });
@@ -342,10 +338,11 @@ export class FestivalPromenadeSet {
         const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.57, 4.7, 8), trunkMat);
         trunk.position.y = 2.35;
         tree.add(trunk);
-        for (const [dx, dy, dz, radius] of [
-          [0, 5.85, 0, 2.45], [-1.5, 5.0, 0.2, 1.85], [1.45, 5.1, -0.3, 1.9]
+        for (const [dx, dy, dz, width, height, tone] of [
+          [0, 5.8, 0, 5.3, 3.5, 0], [-1.5, 5.0, 0.28, 3.5, 2.6, 1],
+          [1.4, 5.15, -0.24, 3.8, 2.7, 2]
         ]) {
-          const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(radius, 1), foliageMat);
+          const crown = this.foliageKit.canopy(width, height, tone);
           crown.position.set(dx, dy, dz);
           tree.add(crown);
         }
@@ -374,9 +371,6 @@ export class FestivalPromenadeSet {
   private buildLanternStrings(): void {
     const route = PHASE6_ROUTES[Phase6RouteId.shared];
     const wireMat = new THREE.LineBasicMaterial({ color: 0x705036 });
-    const lampMat = new THREE.MeshStandardMaterial({
-      color: 0xffe09b, emissive: 0xffbc43, emissiveIntensity: 2.1
-    });
     for (let row = 0; row < 7; row++) {
       const t = 0.16 + row * 0.12;
       const p = route.getPointAt(t);
@@ -390,10 +384,11 @@ export class FestivalPromenadeSet {
         const lightPosition = p.clone().addScaledVector(normal, span);
         lightPosition.y = 4.85 - sag;
         wirePoints.push(lightPosition);
-        if (j > 0 && j < 12) {
-          const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), lampMat);
+        if (j > 0 && j < 12 && j % 2 === 0) {
+          const lamp = this.lanternKit.create((row + j) % 4 === 0 ? 'carp' :
+            (row + j) % 3 === 0 ? 'star' : 'paper');
           lamp.position.copy(lightPosition);
-          lamp.position.y -= 0.08;
+          lamp.position.y -= 0.18;
           this.group.add(lamp);
         }
       }
@@ -446,12 +441,10 @@ export class FestivalPromenadeSet {
 
   private buildLaterRouteFraming(): void {
     const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x332e2b, roughness: 1 });
-    const leafMaterial = new THREE.MeshStandardMaterial({ color: 0x142b28, roughness: 1 });
     const lightMaterial = new THREE.MeshStandardMaterial({
       color: 0xffe3a0, emissive: 0xffbb55, emissiveIntensity: 1.8
     });
     const trunkGeometry = new THREE.CylinderGeometry(0.35, 0.5, 4.2, 7);
-    const crownGeometry = new THREE.IcosahedronGeometry(2.15, 1);
     const bulbGeometry = new THREE.SphereGeometry(0.075, 6, 5);
     const addTree = (parent: THREE.Group, x: number, z: number, scale: number, bulbCount: number) => {
       const tree = new THREE.Group();
@@ -460,11 +453,10 @@ export class FestivalPromenadeSet {
       const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
       trunk.position.y = 2.1;
       tree.add(trunk);
-      for (const [dx, dy, dz, size] of [[0, 5.25, 0, 1], [-1.45, 4.75, 0, 0.72],
-        [1.4, 4.8, -0.3, 0.75]] as const) {
-        const crown = new THREE.Mesh(crownGeometry, leafMaterial);
-        crown.position.set(dx, dy, dz);
-        crown.scale.setScalar(size);
+      for (const [dx, dy, dz, size, tone] of [[0, 5.25, 0, 1, 0], [-1.45, 4.75, 0.2, 0.72, 1],
+        [1.4, 4.8, -0.3, 0.75, 2]] as const) {
+        const crown = this.foliageKit.canopy(4.5 * size, 3.1 * size, tone);
+          crown.position.set(dx, dy, dz);
         tree.add(crown);
       }
       for (let i = 0; i < bulbCount; i++) {
@@ -495,9 +487,7 @@ export class FestivalPromenadeSet {
     const addSwag = (routeId: Phase6RouteId, parent: THREE.Group, stops: number[], intensity: number) => {
       const route = PHASE6_ROUTES[routeId];
       const wire = new THREE.LineBasicMaterial({ color: 0x62452e });
-      const bulb = new THREE.MeshStandardMaterial({
-        color: 0xffdf9b, emissive: 0xffb746, emissiveIntensity: intensity
-      });
+      void intensity;
       for (const t of stops) {
         const p = route.getPointAt(t);
         const tangent = route.getTangentAt(t);
@@ -508,8 +498,8 @@ export class FestivalPromenadeSet {
           const point = p.clone().addScaledVector(normal, (f - 0.5) * 12.8);
           point.y = 5.0 - Math.sin(f * Math.PI) * 0.5;
           points.push(point);
-          if (i > 0 && i < 10) {
-            const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.105, 7, 5), bulb);
+          if (i > 0 && i < 10 && i % 2 === 0) {
+            const lamp = this.lanternKit.create(i % 4 === 0 ? 'star' : 'paper');
             lamp.position.copy(point);
             parent.add(lamp);
           }
@@ -582,15 +572,12 @@ export class FestivalPromenadeSet {
       island.add(bloom);
     }
 
-    // The central stall is short enough to keep the festival open and human in scale.
-    const counter = box(2.5, 1.2, 1.4, wood); counter.position.y = 0.95;
-    const canopy = new THREE.Mesh(new THREE.ConeGeometry(2.3, 1.1, 4), cloth);
-    canopy.rotation.y = Math.PI / 4;
-    canopy.position.y = 2.85;
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.34, 10, 8),
-      new THREE.MeshStandardMaterial({ color: 0xffd38a, emissive: 0xffa837, emissiveIntensity: 1.2 }));
-    lamp.position.y = 2.35;
-    island.add(counter, canopy, lamp);
+    // A small lantern-craft stall supplies a believable, open route divider.
+    const splitStall = this.marketKit.create(2);
+    splitStall.scale.setScalar(0.7);
+    splitStall.position.y = 0.38;
+    splitStall.rotation.y = -Math.PI / 2;
+    island.add(splitStall);
     this.group.add(island);
   }
 
@@ -621,33 +608,9 @@ export class FestivalPromenadeSet {
     moonDisc.position.set(0, 5.5, -10.4);
     alcove.add(moonDisc);
 
-    // A quiet áo dài silhouette: a person beside tea, rather than a crowned statue.
-    const guardian = new THREE.Group();
+    // A Moon-lit áo dài cutout, staged beside tea instead of a fantasy statue.
+    const guardian = this.characterKit.create('guardian');
     guardian.position.set(-1.45, 0, -2.2);
-    guardian.scale.setScalar(1.23);
-    const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.55, 1.65, 9),
-      new THREE.MeshStandardMaterial({ color: 0x46515e, roughness: 0.96 }));
-    robe.position.y = 0.89;
-    const shoulders = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.29, 0.63, 9),
-      new THREE.MeshStandardMaterial({ color: 0x596674, roughness: 0.96 }));
-    shoulders.position.y = 1.96;
-    const head = new THREE.Mesh(new THREE.SphereGeometry(0.19, 12, 9),
-      new THREE.MeshStandardMaterial({ color: 0x8c766e, roughness: 0.9 }));
-    head.position.y = 2.48;
-    const hair = new THREE.Mesh(new THREE.SphereGeometry(0.21, 10, 7),
-      new THREE.MeshStandardMaterial({ color: 0x242b35, roughness: 1 }));
-    hair.position.set(0, 2.58, 0.035);
-    hair.scale.set(1, 0.55, 1);
-    guardian.add(robe, shoulders, head, hair);
-    const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.075, 0.72, 7),
-      new THREE.MeshStandardMaterial({ color: 0x596674, roughness: 0.96 }));
-    sleeve.position.set(0.4, 1.84, 0);
-    sleeve.rotation.z = -0.72;
-    guardian.add(sleeve);
-    const robeTrim = new THREE.Mesh(new THREE.BoxGeometry(0.035, 1.15, 0.018),
-      new THREE.MeshBasicMaterial({ color: 0xc5a472 }));
-    robeTrim.position.set(0.06, 1.02, 0.36);
-    guardian.add(robeTrim);
     alcove.add(guardian);
 
     const teaTable = new THREE.Mesh(new THREE.CylinderGeometry(0.88, 0.78, 0.14, 16), stone);
@@ -713,16 +676,27 @@ export class FestivalPromenadeSet {
     grass.frustumCulled = false;
     alcove.add(grass);
 
-    // Blank paper backs in the garden hint at memories; real images come from the deck.
-    const paper = new THREE.MeshStandardMaterial({
-      color: 0xf1dfb8, emissive: 0xd8bb82, emissiveIntensity: 0.18,
-      roughness: 0.92, side: THREE.DoubleSide
+    // Small paper backs frame the garden; the actual photographs live in the deck UI.
+    const paperCanvas = document.createElement('canvas');
+    paperCanvas.width = 128; paperCanvas.height = 160;
+    const pc = paperCanvas.getContext('2d')!;
+    pc.fillStyle = '#f1e5cb'; pc.fillRect(5, 5, 118, 150);
+    pc.fillStyle = '#324456'; pc.fillRect(15, 15, 98, 111);
+    pc.strokeStyle = '#c6b88f'; pc.lineWidth = 2; pc.strokeRect(15, 15, 98, 111);
+    pc.strokeStyle = '#d7c489'; pc.lineWidth = 4;
+    pc.beginPath(); pc.arc(64, 70, 22, -1.1, 1.2); pc.stroke();
+    pc.fillStyle = '#baa882'; pc.fillRect(35, 139, 58, 2);
+    const paper = new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(paperCanvas), side: THREE.DoubleSide,
+      transparent: true, depthWrite: false, toneMapped: false
     });
     for (let i = 0; i < 4; i++) {
       const petal = new THREE.Group();
-      petal.position.set(-3.2 + i * 2.0, 2.3 + (i % 2) * 0.35, -4.5 - (i % 2) * 0.4);
-      petal.rotation.y = -0.25 + i * 0.13;
-      const card = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.73), paper);
+      petal.position.set([-3.2, -2.35, 2.25, 3.1][i],
+        2.2 + (i % 2) * 0.32, -4.9 - (i % 2) * 0.3);
+      petal.rotation.y = -0.28 + i * 0.14;
+      petal.rotation.z = (i % 2 ? 1 : -1) * 0.075;
+      const card = new THREE.Mesh(new THREE.PlaneGeometry(0.38, 0.52), paper);
       petal.add(card);
       this.memoryPetals.push(petal);
       alcove.add(petal);
@@ -758,7 +732,6 @@ export class FestivalPromenadeSet {
 
     // A pair of broad trees frame the terrace without a pointed fence silhouette.
     const trunkMat = new THREE.MeshStandardMaterial({ color: 0x33352f, roughness: 1 });
-    const leafMat = new THREE.MeshStandardMaterial({ color: 0x132c29, roughness: 1 });
     for (const [x, z, scale] of [[-6.2, -4.5, 1], [6.3, -5.1, 1.12]] as const) {
       const tree = new THREE.Group();
       tree.position.set(x, 0, z);
@@ -766,8 +739,9 @@ export class FestivalPromenadeSet {
       const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.62, 5.4, 8), trunkMat);
       trunk.position.y = 2.7;
       tree.add(trunk);
-      for (const [dx, dy, dz, size] of [[0, 6.5, 0, 2.8], [-1.8, 5.8, 0, 2.1], [1.9, 5.7, 0.3, 2.3]] as const) {
-        const crown = new THREE.Mesh(new THREE.IcosahedronGeometry(size, 1), leafMat);
+      for (const [dx, dy, dz, size, tone] of [[0, 6.5, 0, 2.8, 0], [-1.8, 5.8, 0.2, 2.1, 1],
+        [1.9, 5.7, 0.3, 2.3, 2]] as const) {
+        const crown = this.foliageKit.canopy(size * 2.1, size * 1.45, tone);
         crown.position.set(dx, dy, dz);
         tree.add(crown);
       }
@@ -784,6 +758,11 @@ export class FestivalPromenadeSet {
       alcove.add(tree);
     }
 
+    for (const x of [-6.5, 6.6]) {
+      const bamboo = this.foliageKit.bamboo(3.0, 5.5);
+      bamboo.position.set(x, 0.08, 1.8);
+      alcove.add(bamboo);
+    }
     this.group.add(alcove);
   }
 
@@ -836,7 +815,7 @@ export class FestivalPromenadeSet {
       new THREE.Vector3(-0.17, 6.0, 3.75)
     ]);
     gate.add(new THREE.Mesh(new THREE.TubeGeometry(innerArch, 48, 0.055, 6), traceMaterial));
-    const crest = new THREE.Mesh(visitorStar, traceMaterial);
+    const crest = new THREE.Mesh(crestStar, traceMaterial);
     crest.position.set(-0.22, 8.28, 0);
     crest.rotation.y = Math.PI / 2;
     crest.scale.setScalar(1.05);
@@ -1003,11 +982,13 @@ export class FestivalPromenadeSet {
       material.emissiveIntensity = 0.12 + this.gateActivation * 1.3;
     });
     this.gateGlass.opacity = 0.88 - this.gateActivation * 0.5;
+    const idleHaze = this.ceremonialScenery.visible ? 0.42 : 0.2;
     (this.gateHaze.material as THREE.MeshBasicMaterial).opacity =
-      (0.2 + this.gateActivation * (0.75 + Math.sin(time * 1.3) * 0.05)) *
+      (idleHaze + this.gateActivation * (0.95 - idleHaze + Math.sin(time * 1.3) * 0.05)) *
       (1 - this.gateRevealProgress * 0.92);
     (this.gateVeil.material as THREE.SpriteMaterial).opacity =
-      this.gateActivation * (0.55 + Math.sin(time * 1.5) * 0.05) *
+      ((this.ceremonialScenery.visible ? 0.2 : 0) +
+      this.gateActivation * (0.35 + Math.sin(time * 1.5) * 0.05)) *
       (1 - this.gateRevealProgress);
     this.memoryPetals.forEach((petal, i) => {
       petal.position.y = 2.3 + (i % 2) * 0.35 + Math.sin(time * 0.8 + i * 1.4) * 0.12;

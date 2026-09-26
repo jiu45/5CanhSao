@@ -109,6 +109,8 @@ export class Phase6FestivalScene implements IScene {
     this.scene.add(this.environment.group);
     this.towerVista.clearPhase5LanternRoute();
     this.towerVista.setPhase5TowerFocus(1);
+    this.towerVista.setSkylineVisible(false);
+    this.towerVista.setPromenadeFloorMood();
     this.scene.add(this.towerVista.group);
   }
 

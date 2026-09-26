@@ -38,19 +38,33 @@ export class Phase6PuzzleOverlay {
         background:radial-gradient(ellipse at 50% 0%,rgba(255,212,125,.64),rgba(118,55,69,.92));
         outline:2px solid #f5cf83; outline-offset:2px;
       }
-      .phase6-keepsake.memory-mode { width:min(900px,calc(100vw - 24px));
+      .phase6-keepsake.memory-mode { left:0; transform:none; width:100%; max-width:none;
         background:transparent; border:0; box-shadow:none; overflow:visible; }
+      .phase6-keepsake.memory-mode .choices { max-width:740px; margin:auto; }
       .phase6-keepsake.memory-mode h2,.phase6-keepsake.memory-mode p,
       .phase6-keepsake.memory-mode small { text-shadow:0 2px 11px #050812,0 1px 3px #050812; }
+      .phase6-keepsake.memory-mode h2 { position:fixed; top:45px; left:50%;
+        transform:translateX(-50%); box-sizing:border-box; width:min(650px,calc(100vw - 32px));
+        padding:5px 14px; border-radius:16px; background:rgba(8,18,34,.78); }
+      .phase6-keepsake.memory-mode p { position:fixed; top:84px; left:50%;
+        transform:translateX(-50%); box-sizing:border-box; width:min(650px,calc(100vw - 32px));
+        padding:4px 12px; border-radius:12px; background:rgba(8,18,34,.74);
+        font-size:14px; }
+      .phase6-keepsake.memory-mode p:nth-of-type(2) { top:119px; }
       .phase6-keepsake .memory-card { display:flex; flex-direction:column; align-items:center;
-        gap:8px; min-width:0; padding:8px 8px 15px; color:#453d38; background:#f3e9d5;
-        border:1px solid #d9c9a6; border-radius:2px; box-shadow:0 8px 21px rgba(0,0,0,.38);
-        transform:rotate(-2deg); transition:transform .25s ease,box-shadow .25s ease; }
-      .phase6-keepsake .memory-card:nth-child(even) { transform:rotate(2deg); }
+        gap:7px; min-width:0; padding:7px 7px 13px; color:#453d38;
+        background:linear-gradient(135deg,#fff5df,#e9ddc4 82%,#d8c9aa);
+        border:1px solid #d9c9a6; border-radius:2px;
+        box-shadow:0 8px 21px rgba(0,0,0,.38),inset 1px 1px rgba(255,255,255,.75);
+        transform:translateY(3px) rotate(-3deg);
+        transition:transform .25s ease,box-shadow .25s ease; }
+      .phase6-keepsake .memory-card:nth-child(2) { transform:translateY(-5px) rotate(2deg); }
+      .phase6-keepsake .memory-card:nth-child(3) { transform:translateY(4px) rotate(-1deg); }
+      .phase6-keepsake .memory-card:nth-child(4) { transform:translateY(-3px) rotate(3deg); }
       .phase6-keepsake .memory-card:hover,.phase6-keepsake .memory-card:focus-visible {
         transform:translateY(-8px) rotate(0); outline:2px solid #f6d587;
         box-shadow:0 15px 28px rgba(0,0,0,.44); }
-      .phase6-keepsake .memory-card img { width:100%; height:145px; object-fit:cover;
+      .phase6-keepsake .memory-card img { width:100%; height:122px; object-fit:cover;
         object-position:center; background:#ddd1bb; }
       .phase6-keepsake .memory-card span { font-size:14px; line-height:1.2; }
       .phase6-keepsake .featured { width:min(280px,95%); margin:9px auto; padding:9px 9px 17px;
@@ -65,6 +79,9 @@ export class Phase6PuzzleOverlay {
         .phase6-keepsake h2{font-size:18px;}
         .phase6-keepsake .choices{grid-template-columns:repeat(2,minmax(0,1fr));}
         .phase6-keepsake .memory-card img{height:100px;}
+        .phase6-keepsake.memory-mode h2{top:75px;font-size:16px;}
+        .phase6-keepsake.memory-mode p{top:108px;font-size:12px;}
+        .phase6-keepsake.memory-mode p:nth-of-type(2){top:150px;}
       }
       @media(prefers-reduced-motion:reduce) {
         .phase6-keepsake .memory-card{transition:none;}

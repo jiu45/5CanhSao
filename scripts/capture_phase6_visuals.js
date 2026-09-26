@@ -27,7 +27,8 @@ try {
     ['gate_ready', 'route_reunited_gate', 1, 'PHASE6_COMPLETE', false, true]
   ];
   for (const [name, routeId, t, stage, separated, gateReady] of shots) {
-    if (process.env.PHASE6_CAPTURE && process.env.PHASE6_CAPTURE !== name) continue;
+    const selected = process.argv[2] || process.env.PHASE6_CAPTURE;
+    if (selected && selected !== name) continue;
     await page.evaluate(({ routeId, t, stage, separated, gateReady }) => {
       const scene = window.sceneManager.currentScene;
       scene.roomManager.companionPresence = {
@@ -61,6 +62,11 @@ try {
     }, { routeId, t, stage, separated, gateReady });
     await new Promise(resolve => setTimeout(resolve, 700));
     await page.screenshot({ path: path.join(output, `phase6_${name}.png`) });
-    console.log(`Captured phase6_${name}.png`);
+    const renderInfo = await page.evaluate(() => {
+      const info = window.game?.renderer?.renderer?.info;
+      return info ? { geometries: info.memory.geometries,
+        textures: info.memory.textures } : null;
+    });
+    console.log(`Captured phase6_${name}.png`, renderInfo);
   }
 } finally { await browser.close(); }

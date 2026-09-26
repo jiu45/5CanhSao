@@ -252,6 +252,7 @@ export class CooperativeFestivalScene implements IScene {
     // 2. Distant Festival Vista (Contains Slender Gate and Tháp Đèn Kéo Quân)
     this.distantFestivalVista = new DistantFestivalVista();
     this.distantFestivalVista.clearPhase5LanternRoute();
+    this.distantFestivalVista.setPromenadeFloorMood();
     this.sceneGroup.add(this.distantFestivalVista.group);
 
     // 3. Ground Terrain & Walkway along FESTIVAL_COOP_CURVE

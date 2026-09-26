@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { PapercraftFoliageKit } from './papercraft/PapercraftFoliageKit';
+import { MarketStallKit } from './papercraft/MarketStallKit';
+import { PresentCrowdKit } from './papercraft/PresentCrowdKit';
 
 /**
  * DistantFestivalVista — Modern Vietnamese Mid-Autumn Festival Plaza Reveal (Phase 4B)
@@ -19,7 +22,12 @@ export class DistantFestivalVista {
   private revolvingDrum!: THREE.Mesh;
   private canopyLanterns: THREE.Mesh[] = [];
   private danglingTreeLanterns: THREE.Mesh[] = [];
-  private visitorMeshes: THREE.Mesh[] = [];
+  private readonly foliageKit = new PapercraftFoliageKit();
+  private readonly marketKit = new MarketStallKit();
+  private readonly crowdKit = new PresentCrowdKit();
+  private visitorMeshes: THREE.Object3D[] = [];
+  private skylineMesh?: THREE.Mesh;
+  private plazaFloorMaterial?: THREE.MeshStandardMaterial;
   private festivalWashLight!: THREE.PointLight;
   private gateSpotLight!: THREE.PointLight;
   private towerCoreLight!: THREE.PointLight;
@@ -66,12 +74,28 @@ export class DistantFestivalVista {
     this.visitorMeshes.forEach(mesh => { mesh.visible = false; });
   }
 
+  public setSkylineVisible(visible: boolean): void {
+    if (this.skylineMesh) this.skylineMesh.visible = visible;
+  }
+
+  public setPromenadeFloorMood(): void {
+    if (!this.plazaFloorMaterial) return;
+    this.plazaFloorMaterial.color.setHex(0x5d595d);
+    this.plazaFloorMaterial.emissive.setHex(0x39241d);
+    this.plazaFloorMaterial.emissiveIntensity = 0.28;
+    this.plazaFloorMaterial.roughness = 0.9;
+    this.baseEmissiveIntensity.set(this.plazaFloorMaterial, 0.28);
+  }
+
   private buildVista() {
     // 1. Soft S-Curving Approach Path with glowing flowerbeds & bollard lights
     this.createCurvingApproachPath();
 
     // 2. Decorated Roadside Framing Trees (Dangling mini lanterns & overhead fairy lights)
     this.createFramingTrees();
+
+    // Cool paper bamboo holds the Dark Zone in the same illustrated world.
+    this.createDarkZoneBamboo();
 
     // 3. Slender Modern Vietnamese Mid-Autumn Festival Gate
     this.createFestivalGate();
@@ -237,39 +261,29 @@ export class DistantFestivalVista {
     }
 
     // Strolling Visitor Silhouettes & Environmental Storytelling along approach path
-    const visitorTex = TextureGenerator.createModernParkVisitorsTexture();
-    const visitorGeo = new THREE.PlaneGeometry(2.4, 2.6);
-    const visitorMat = new THREE.MeshBasicMaterial({
-      map: visitorTex,
-      transparent: true,
-      alphaTest: 0.05,
-      side: THREE.DoubleSide
-    });
-
     // Increasing Crowd Density: Sparse near viewpoint -> Moderate midway -> Clustered near gate
     const visitorPlacements = [
-      { t: 0.18, sideOffset: -0.7, scale: 0.72 },
-      { t: 0.35, sideOffset: 0.8, scale: 0.64 },
-      { t: 0.50, sideOffset: -0.5, scale: 0.58 },
-      { t: 0.65, sideOffset: 0.6, scale: 0.52 },
-      { t: 0.78, sideOffset: -0.65, scale: 0.48 },
-      { t: 0.86, sideOffset: 0.5, scale: 0.45 },
-      { t: 0.92, sideOffset: -0.4, scale: 0.42 },
-      { t: 0.96, sideOffset: 0.6, scale: 0.40 }
+      { t: 0.18, sideOffset: -3.3, scale: 0.9 },
+      { t: 0.35, sideOffset: 3.5, scale: 0.85 },
+      { t: 0.50, sideOffset: -3.4, scale: 0.8 },
+      { t: 0.65, sideOffset: 3.5, scale: 0.8 },
+      { t: 0.78, sideOffset: -3.4, scale: 0.75 },
+      { t: 0.86, sideOffset: 3.5, scale: 0.73 },
+      { t: 0.92, sideOffset: -3.3, scale: 0.7 },
+      { t: 0.96, sideOffset: 3.6, scale: 0.68 }
     ];
 
-    visitorPlacements.forEach(vp => {
+    visitorPlacements.forEach((vp, index) => {
       const pt = pathCurve.getPoint(vp.t);
       const tangent = pathCurve.getTangent(vp.t).normalize();
       const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
       const vPos = pt.clone().add(normal.multiplyScalar(vp.sideOffset));
 
-      const vMesh = new THREE.Mesh(visitorGeo, visitorMat);
-      vMesh.position.set(vPos.x, vPos.y + 1.25 * vp.scale, vPos.z);
-      vMesh.scale.setScalar(vp.scale);
-      vMesh.rotation.y = this.vistaRotationY;
-      this.group.add(vMesh);
-      this.visitorMeshes.push(vMesh);
+      const visitor = this.crowdKit.createActor(vPos.x, vPos.z, vp.scale,
+        0x26364b, index % 3 === 0 ? 'star' : index % 3 === 1 ? 'round' : 'none');
+      visitor.position.y = vPos.y;
+      this.group.add(visitor);
+      this.visitorMeshes.push(visitor);
     });
 
     // -------------------------------------------------------------------------
@@ -442,14 +456,12 @@ export class DistantFestivalVista {
     trunk.position.set(0, 2.2, 0);
     treeGroup.add(trunk);
 
-    // Lush canopy clumps
-    const foliageMat = new THREE.MeshStandardMaterial({ color: 0x184232, roughness: 0.78 });
-    const clump1 = new THREE.Mesh(new THREE.SphereGeometry(2.0, 10, 8), foliageMat);
+    // Layered cut-paper canopy keeps the lantern strings visible through open edges.
+    const clump1 = this.foliageKit.canopy(5.2, 3.25, 0);
     clump1.position.set(0, 4.4, 0);
-    clump1.scale.set(1.2, 0.85, 1.1);
     treeGroup.add(clump1);
 
-    const clump2 = new THREE.Mesh(new THREE.SphereGeometry(1.5, 8, 8), foliageMat);
+    const clump2 = this.foliageKit.canopy(3.7, 2.5, 2);
     clump2.position.set(0.4, 5.4, 0.2);
     treeGroup.add(clump2);
 
@@ -531,6 +543,17 @@ export class DistantFestivalVista {
     }
 
     this.group.add(treeGroup);
+  }
+
+  private createDarkZoneBamboo() {
+    for (const [x, z, width, height] of [
+      [61.8, -18.8, 3.3, 5.1], [67.7, -21.2, 2.7, 4.7],
+      [65.2, -5.9, 3.0, 4.9], [72.5, -9.4, 2.8, 5.2]
+    ]) {
+      const card = this.foliageKit.bamboo(width, height);
+      card.position.set(x, -0.18, z);
+      this.group.add(card);
+    }
   }
 
   /**
@@ -618,6 +641,7 @@ export class DistantFestivalVista {
       roughness: 0.55,
       metalness: 0.1
     });
+    this.plazaFloorMaterial = plazaMat;
     const plazaFloor = new THREE.Mesh(plazaFloorGeo, plazaMat);
     plazaFloor.position.set(0, 0.125, 0);
     plazaFloor.receiveShadow = true;
@@ -636,6 +660,15 @@ export class DistantFestivalVista {
     rimMesh.rotation.x = Math.PI / 2;
     rimMesh.position.set(0, 0.26, 0);
     plazaGroup.add(rimMesh);
+
+    // A restrained illustrated audience gives the outer lantern court a human scale.
+    // They stay behind the two playable lanterns and clear of the tower's silhouette.
+    for (const [x, z, scale, prop, color] of [
+      [-8, -10, 0.86, 'star', 0x273952], [-5, -14, 0.72, 'none', 0x48506a],
+      [-8, 10, 0.88, 'round', 0x433a53], [-5, 14, 0.72, 'none', 0x26384a]
+    ] as const) {
+      plazaGroup.add(this.crowdKit.createActor(x, z, scale, color, prop));
+    }
 
     // Warm Ambient Plaza Wash Lights (soft luminous glow without blowout)
     this.festivalWashLight = new THREE.PointLight(0xffa834, 6.5, 80.0, 1.2);
@@ -891,46 +924,14 @@ export class DistantFestivalVista {
     stallsGroup.position.set(100.0, -0.3, -25.6);
 
     const stallAngles = [0.55, 1.35, 2.15, 3.75, 4.55, 5.35];
-    const stallRoofGeo = new THREE.ConeGeometry(2.8, 1.4, 4);
-    const stallRoofMat = new THREE.MeshStandardMaterial({
-      color: 0xbe123c,
-      roughness: 0.6,
-      emissive: 0x9f1239,
-      emissiveIntensity: 1.0
-    });
-    const stallBodyGeo = new THREE.BoxGeometry(3.2, 2.0, 2.2);
-    const stallBodyMat = new THREE.MeshStandardMaterial({
-      color: 0x1f2937,
-      roughness: 0.8
-    });
-    const stallLightMat = new THREE.MeshStandardMaterial({
-      color: 0xfff08a,
-      emissive: 0xfbbf24,
-      emissiveIntensity: 3.5
-    });
-
-    stallAngles.forEach(ang => {
+    stallAngles.forEach((ang, index) => {
       const r = 31.0;
       const sx = Math.cos(ang) * r;
       const sz = Math.sin(ang) * (r * 0.72);
 
-      const stall = new THREE.Group();
+      const stall = this.marketKit.create(index);
       stall.position.set(sx, 0, sz);
       stall.rotation.y = -ang + Math.PI / 2;
-
-      const body = new THREE.Mesh(stallBodyGeo, stallBodyMat);
-      body.position.set(0, 1.0, 0);
-      stall.add(body);
-
-      const roof = new THREE.Mesh(stallRoofGeo, stallRoofMat);
-      roof.position.set(0, 2.7, 0);
-      roof.rotation.y = Math.PI / 4;
-      stall.add(roof);
-
-      const counterLight = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.15, 0.2), stallLightMat);
-      counterLight.position.set(0, 1.3, 1.15);
-      stall.add(counterLight);
-
       stallsGroup.add(stall);
     });
 
@@ -948,12 +949,14 @@ export class DistantFestivalVista {
       map: skylineTex,
       transparent: true,
       alphaTest: 0.05,
-      side: THREE.DoubleSide
+      side: THREE.DoubleSide,
+      toneMapped: false
     });
     const skylineMesh = new THREE.Mesh(skylineGeo, skylineMat);
     skylineMesh.position.set(135.0, 15.0, -38.0);
     skylineMesh.rotation.y = this.vistaRotationY;
     this.group.add(skylineMesh);
+    this.skylineMesh = skylineMesh;
 
     // Warm Atmospheric Horizon Light Dome with soft radial falloff (zero hard edges)
     const glowGeo = new THREE.PlaneGeometry(180.0, 60.0);

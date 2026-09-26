@@ -7,6 +7,8 @@ import { audioManager } from '../audio/AudioManager';
 import { StoryConfig } from '../config/StoryConfig';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { DistantFestivalVista } from '../props/DistantFestivalVista';
+import { PapercraftFoliageKit } from '../props/papercraft/PapercraftFoliageKit';
+import { PresentCrowdKit } from '../props/papercraft/PresentCrowdKit';
 
 export class ModernArrivalScene implements IScene {
   public scene: THREE.Scene;
@@ -27,9 +29,11 @@ export class ModernArrivalScene implements IScene {
   private giantMoonCrescentMesh!: THREE.Mesh;
   private giantMoonLight!: THREE.PointLight;
   private distantFestivalBackdrop!: THREE.Mesh;
-  private parkVisitorMeshes: THREE.Mesh[] = [];
+  private parkVisitorMeshes: THREE.Object3D[] = [];
   private parkLampLights: THREE.PointLight[] = [];
-  private treeCanopies: THREE.Mesh[] = [];
+  private treeCanopies: THREE.Sprite[] = [];
+  private readonly foliageKit = new PapercraftFoliageKit();
+  private readonly crowdKit = new PresentCrowdKit();
 
   // Transition & visual veil
   private fadeCurtainEl: HTMLElement | null = null;
@@ -716,31 +720,18 @@ export class ModernArrivalScene implements IScene {
     });
 
     // 6. Contemporary Park Visitors strolling peacefully along promenade (1.7m - 1.8m human scale)
-    const visitorTex = TextureGenerator.createModernParkVisitorsTexture();
-    const visitorGeo = new THREE.PlaneGeometry(2.4, 2.6);
-    const visitorMat = new THREE.MeshBasicMaterial({
-      map: visitorTex,
-      transparent: true,
-      alphaTest: 0.05,
-      side: THREE.DoubleSide
-    });
-
     const visitorPlacements = [
-      { x: -1.3, y: 1.3, z: -9.0, scale: 1.0 },
-      { x: 1.4, y: 1.25, z: -16.0, scale: 0.96 },
-      { x: -1.1, y: 1.2, z: -25.0, scale: 0.90 },
-      { x: 0.9, y: 1.15, z: -34.0, scale: 0.85 }
+      { x: -1.7, z: -9.0, scale: 1.0 },
+      { x: 1.9, z: -16.0, scale: 0.96 },
+      { x: -1.8, z: -25.0, scale: 0.90 },
+      { x: 1.7, z: -34.0, scale: 0.85 }
     ];
 
-    visitorPlacements.forEach(vp => {
-      const visitorMesh = new THREE.Mesh(visitorGeo, visitorMat);
-      visitorMesh.position.set(vp.x, vp.y, vp.z);
-      visitorMesh.scale.setScalar(vp.scale);
-      this.modernArrivalGroup.add(visitorMesh);
-      this.parkVisitorMeshes.push(visitorMesh);
-
-      // Subtle warm lantern point light carried by family
-      // The illustrated lantern glow is already painted into the visitor card.
+    visitorPlacements.forEach((vp, index) => {
+      const visitor = this.crowdKit.createActor(vp.x, vp.z, vp.scale,
+        0x26364b, index % 2 ? 'round' : 'star');
+      this.modernArrivalGroup.add(visitor);
+      this.parkVisitorMeshes.push(visitor);
     });
   }
 
@@ -835,32 +826,19 @@ export class ModernArrivalScene implements IScene {
       treeGroup.add(bead);
     }
 
-    // Multi-tier lush foliage with rich emerald and forest green tones
-    const foliageMatLower = new THREE.MeshStandardMaterial({
-      color: 0x235c46,
-      roughness: 0.72
-    });
-    const foliageMatUpper = new THREE.MeshStandardMaterial({
-      color: 0x2f785b,
-      roughness: 0.68
-    });
-
-    // 4 overlapping organic foliage clumps
-    const clump1 = new THREE.Mesh(new THREE.SphereGeometry(1.6, 12, 10), foliageMatLower);
+    // Three staggered illustrated cut-paper layers retain the lit trunk as a 3D anchor.
+    const clump1 = this.foliageKit.canopy(4.1, 2.65, 0);
     clump1.position.set(0, 3.7, 0);
-    clump1.scale.set(1.2, 0.85, 1.15);
     treeGroup.add(clump1);
     this.treeCanopies.push(clump1);
 
-    const clump2 = new THREE.Mesh(new THREE.SphereGeometry(1.3, 10, 8), foliageMatUpper);
+    const clump2 = this.foliageKit.canopy(3.4, 2.3, 2);
     clump2.position.set(0.35, 4.6, 0.2);
-    clump2.scale.set(1.05, 0.85, 1.0);
     treeGroup.add(clump2);
     this.treeCanopies.push(clump2);
 
-    const clump3 = new THREE.Mesh(new THREE.SphereGeometry(1.1, 10, 8), foliageMatLower);
+    const clump3 = this.foliageKit.canopy(2.6, 1.9, 1);
     clump3.position.set(-0.4, 4.2, -0.25);
-    clump3.scale.set(0.95, 0.8, 0.95);
     treeGroup.add(clump3);
     this.treeCanopies.push(clump3);
 

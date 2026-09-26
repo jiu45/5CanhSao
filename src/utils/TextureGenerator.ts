@@ -3439,31 +3439,33 @@ export class TextureGenerator {
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, 512, 128);
 
-    // Low-density modern park buildings & cultural center silhouettes
+    // Three staggered façade depths; the warm paper windows read as a city,
+    // while the cool roofs recede behind the festival rather than competing.
     const buildings = [
-      { x: 30, w: 75, h: 55, roof: 'flat' },
-      { x: 120, w: 90, h: 72, roof: 'slanted' },
-      { x: 230, w: 80, h: 48, roof: 'flat' },
-      { x: 325, w: 95, h: 64, roof: 'curved' },
-      { x: 435, w: 70, h: 52, roof: 'flat' }
+      { x: 12, w: 70, h: 47, roof: 'flat', shade: '#101d30' },
+      { x: 72, w: 81, h: 67, roof: 'slanted', shade: '#0b1a2c' },
+      { x: 145, w: 62, h: 43, roof: 'flat', shade: '#17253a' },
+      { x: 198, w: 94, h: 76, roof: 'curved', shade: '#101c30' },
+      { x: 281, w: 75, h: 51, roof: 'flat', shade: '#18263a' },
+      { x: 344, w: 88, h: 69, roof: 'slanted', shade: '#0d1b2e' },
+      { x: 422, w: 79, h: 48, roof: 'curved', shade: '#15243a' }
     ];
 
-    buildings.forEach(b => {
-      // Building silhouette
-      ctx.fillStyle = '#0b1324';
+    buildings.forEach((b, index) => {
+      ctx.fillStyle = b.shade;
       if (b.roof === 'slanted') {
         ctx.beginPath();
         ctx.moveTo(b.x, 128);
-        ctx.lineTo(b.x, 128 - b.h + 12);
-        ctx.lineTo(b.x + b.w, 128 - b.h);
+        ctx.lineTo(b.x, 128 - b.h + 8);
+        ctx.lineTo(b.x + b.w, 128 - b.h - 3);
         ctx.lineTo(b.x + b.w, 128);
         ctx.closePath();
         ctx.fill();
       } else if (b.roof === 'curved') {
         ctx.beginPath();
         ctx.moveTo(b.x, 128);
-        ctx.lineTo(b.x, 128 - b.h + 10);
-        ctx.quadraticCurveTo(b.x + b.w * 0.5, 128 - b.h - 8, b.x + b.w, 128 - b.h + 10);
+        ctx.lineTo(b.x, 128 - b.h + 7);
+        ctx.quadraticCurveTo(b.x + b.w * 0.5, 128 - b.h - 12, b.x + b.w, 128 - b.h + 7);
         ctx.lineTo(b.x + b.w, 128);
         ctx.closePath();
         ctx.fill();
@@ -3471,20 +3473,34 @@ export class TextureGenerator {
         ctx.fillRect(b.x, 128 - b.h, b.w, b.h);
       }
 
-      // Warm interior window grids (soft, low-density modern park pavilions)
-      ctx.fillStyle = 'rgba(254, 240, 138, 0.45)';
-      const winCols = Math.floor(b.w / 14);
-      const winRows = Math.floor(b.h / 16);
-      for (let r = 1; r < winRows; r++) {
-        for (let c = 1; c < winCols; c++) {
-          if ((r + c * 3) % 4 !== 0) { // Random scattered lights
-            ctx.fillRect(b.x + c * 13, 128 - b.h + r * 14, 7, 6);
+      ctx.fillStyle = 'rgba(156,184,196,.18)';
+      ctx.fillRect(b.x + 3, 128 - b.h + 9, b.w - 6, 2);
+      ctx.fillStyle = 'rgba(255,214,145,.46)';
+      const cols = Math.floor(b.w / 15);
+      const rows = Math.floor((b.h - 15) / 13);
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          if ((row * 3 + col * 5 + index) % 4 === 0) continue;
+          const wx = b.x + 8 + col * 14;
+          const wy = 128 - b.h + 17 + row * 13;
+          ctx.fillRect(wx, wy, 5, 7);
+          if ((row + col) % 3 === 0) {
+            ctx.fillStyle = 'rgba(255,238,191,.28)';
+            ctx.fillRect(wx + 1, wy + 1, 3, 2);
+            ctx.fillStyle = 'rgba(255,214,145,.46)';
           }
         }
       }
+      // Thin lit parapet suggests a modern cultural-center frontage.
+      if (index % 2 === 0) {
+        ctx.fillStyle = 'rgba(243,174,115,.32)';
+        ctx.fillRect(b.x + 5, 128 - b.h + 4, b.w - 10, 1);
+      }
     });
 
-    return new THREE.CanvasTexture(canvas);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
   }
 
   /**
@@ -3847,4 +3863,3 @@ export class TextureGenerator {
     return new THREE.CanvasTexture(canvas);
   }
 }
-

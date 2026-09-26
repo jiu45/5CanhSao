@@ -2,7 +2,6 @@ import puppeteer from 'puppeteer';
 import fs from 'fs';
 import path from 'path';
 
-const brainDir = 'C:\\Users\\Admin\\.gemini\\antigravity\\brain\\3e507bca-0efa-4051-82db-870e761428c6';
 const testDir = path.resolve('test-artifacts');
 fs.mkdirSync(testDir, { recursive: true });
 
@@ -76,9 +75,10 @@ async function run() {
         const p = scene.approachPathCurve.getPointAt(0.50);
         const t = scene.approachPathCurve.getTangentAt(0.50).normalize();
         scene.playerMesh.position.copy(p);
-        scene.lantern.group.position.copy(p).add(new THREE.Vector3(0.35, 0.45, 0.2));
-        scene.camera.position.copy(p).addScaledVector(t, -4.2).add(new THREE.Vector3(0, 2.1, 0));
-        scene.camera.lookAt(p.clone().addScaledVector(t, 12).add(new THREE.Vector3(0, 1.2, 0)));
+        scene.lantern.group.position.set(p.x + 0.35, p.y + 0.45, p.z + 0.2);
+        scene.camera.position.copy(p).addScaledVector(t, -4.2);
+        scene.camera.position.y += 2.1;
+        scene.camera.lookAt(p.x + t.x * 12, p.y + 1.2, p.z + t.z * 12);
         scene.overlay.setSubtitle("Từng bước tiến về phía đại quảng trường rộn rã...", 5000);
       }
     },
@@ -92,7 +92,7 @@ async function run() {
         const p = scene.approachPathCurve.getPointAt(1.0);
         const t = scene.approachPathCurve.getTangentAt(1.0).normalize();
         scene.playerMesh.position.copy(p);
-        scene.lantern.group.position.copy(p).add(new THREE.Vector3(0.35, 0.45, 0.2));
+        scene.lantern.group.position.set(p.x + 0.35, p.y + 0.45, p.z + 0.2);
         scene.camera.position.set(48.5, 2.2, -5.0);
         scene.camera.lookAt(88.0, 1.5, -20.0);
         scene.overlay.setSubtitle("Đã đến lối vào lễ hội. Đứng đây ngắm nhìn Tháp Đèn Kéo Quân rực rỡ phía trước...", 0);
@@ -102,12 +102,11 @@ async function run() {
   ];
 
   for (const shot of shots) {
+    if (process.argv[2] && process.argv[2] !== shot.id) continue;
     await page.evaluate(shot.setup);
     await new Promise(r => setTimeout(r, 600));
-    const brainPath = path.join(brainDir, `${shot.id}.png`);
     const testPath = path.join(testDir, `${shot.id}.png`);
-    await page.screenshot({ path: brainPath });
-    fs.copyFileSync(brainPath, testPath);
+    await page.screenshot({ path: testPath });
     console.log(`[Captured] ${shot.id}.png -> ${shot.desc}`);
   }
 
