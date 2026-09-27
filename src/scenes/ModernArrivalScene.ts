@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { disposeSceneResources } from '../utils/disposeSceneResources';
 import { IScene } from './BaseScene';
 import { StarLantern } from '../props/StarLantern';
 import { Moon } from '../props/Moon';
@@ -1341,30 +1342,12 @@ export class ModernArrivalScene implements IScene {
     // Dispose all scene meshes, geometries, and materials safely
     if (this.modernArrivalGroup) {
       this.scene.remove(this.modernArrivalGroup);
-      this.modernArrivalGroup.traverse(child => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry?.dispose();
-          if (Array.isArray(child.material)) {
-            child.material.forEach(m => m.dispose());
-          } else {
-            child.material?.dispose();
-          }
-        }
-      });
+      disposeSceneResources(this.modernArrivalGroup);
     }
 
     if (this.distantFestivalGroup) {
       this.scene.remove(this.distantFestivalGroup);
-      this.distantFestivalGroup.traverse(child => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry?.dispose();
-          if (Array.isArray(child.material)) {
-            child.material.forEach(m => m.dispose());
-          } else {
-            child.material?.dispose();
-          }
-        }
-      });
+      disposeSceneResources(this.distantFestivalGroup);
     }
 
     if (this.distantFestivalVista) {

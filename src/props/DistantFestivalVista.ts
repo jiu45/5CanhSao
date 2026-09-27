@@ -3,6 +3,7 @@ import { TextureGenerator } from '../utils/TextureGenerator';
 import { PapercraftFoliageKit } from './papercraft/PapercraftFoliageKit';
 import { MarketStallKit } from './papercraft/MarketStallKit';
 import { PresentCrowdKit } from './papercraft/PresentCrowdKit';
+import { disposeSceneResources } from '../utils/disposeSceneResources';
 
 /**
  * DistantFestivalVista — Modern Vietnamese Mid-Autumn Festival Plaza Reveal (Phase 4B)
@@ -1035,15 +1036,6 @@ export class DistantFestivalVista {
    * Clean disposal of all Three.js resources
    */
   public dispose() {
-    this.group.traverse(child => {
-      if (child instanceof THREE.Mesh) {
-        child.geometry?.dispose();
-        if (Array.isArray(child.material)) {
-          child.material.forEach(m => m.dispose());
-        } else {
-          child.material?.dispose();
-        }
-      }
-    });
+    disposeSceneResources(this.group);
   }
 }

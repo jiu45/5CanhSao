@@ -13,8 +13,10 @@ import type { Phase7GateHandoff } from './Phase6FestivalScene';
 import { RoomManager } from '../multiplayer/RoomManager';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { CraftingUI } from '../ui/CraftingUI';
-import { prewarmScene } from '../utils/prewarmScene';
 import { disposeSceneResources } from '../utils/disposeSceneResources';
+import { prepareSceneForReveal, primeSceneFirstFrame } from '../utils/prepareSceneForReveal';
+import { SceneTransitionCurtain } from '../ui/SceneTransitionCurtain';
+import type { AppRenderer } from '../core/Renderer';
 
 export enum GameSceneId {
   TIME_TRAVEL = 0,
@@ -35,12 +37,17 @@ export class SceneManager {
   public currentScene: IScene | null = null;
   public currentSceneId: GameSceneId = GameSceneId.TIME_TRAVEL;
   private preparedModernArrival: ModernArrivalScene | null = null;
-  private stopModernPrewarm: (() => void) | null = null;
+  private modernPreparation: Promise<void> | null = null;
+  private pastHandoffPending = false;
+  private transitionPending = false;
+  private renderPaused = false;
+  private readonly curtain = new SceneTransitionCurtain();
 
   constructor(
     camera: THREE.PerspectiveCamera,
     overlay: StoryOverlay,
-    craftingUI: CraftingUI
+    craftingUI: CraftingUI,
+    private readonly appRenderer: AppRenderer
   ) {
     this.camera = camera;
     this.overlay = overlay;
@@ -51,15 +58,13 @@ export class SceneManager {
     inheritedSwitches?: { local: boolean; remote: boolean },
     phase7Handoff?: Phase7GateHandoff) {
     console.log('[SCENE MANAGER] Switching from', this.currentSceneId, 'to', sceneId);
-    if (sceneId === GameSceneId.MODERN_ARRIVAL) {
-      this.stopModernPrewarm?.();
-      this.stopModernPrewarm = null;
-    }
     if (this.currentScene) {
       const retired = this.currentScene;
       retired.destroy();
-      // Scenes 0–6 own their artwork. Phase 6 hands its scene to Phase 7.
-      if (this.currentSceneId <= GameSceneId.COOPERATIVE_FESTIVAL) {
+      // Phase 6 alone transfers its Three.js world into Phase 7.
+      const worldTransferred = this.currentSceneId === GameSceneId.FESTIVAL_PROMENADE
+        && sceneId === GameSceneId.GRAND_FESTIVAL && !!phase7Handoff;
+      if (!worldTransferred) {
         disposeSceneResources(retired.scene);
       }
     }
@@ -69,7 +74,7 @@ export class SceneManager {
     switch (sceneId) {
       case GameSceneId.TIME_TRAVEL:
         this.currentScene = new TimeTravelScene(this.camera, this.overlay, () => {
-          this.goToScene(GameSceneId.LANTERN_CRAFTING);
+          void this.transitionToScene(GameSceneId.LANTERN_CRAFTING);
         });
         break;
 
@@ -79,7 +84,7 @@ export class SceneManager {
           this.overlay,
           this.craftingUI,
           () => {
-            this.goToScene(GameSceneId.DOOR_REVEAL);
+            void this.transitionToScene(GameSceneId.DOOR_REVEAL);
           }
         );
         break;
@@ -89,7 +94,7 @@ export class SceneManager {
           this.camera,
           this.overlay,
           () => {
-            this.goToScene(GameSceneId.VILLAGE_WALK);
+            void this.transitionToScene(GameSceneId.VILLAGE_WALK);
           }
         );
         break;
@@ -99,7 +104,7 @@ export class SceneManager {
           this.camera,
           this.overlay,
           () => {
-            this.goToScene(GameSceneId.FESTIVAL_SQUARE);
+            void this.transitionToScene(GameSceneId.FESTIVAL_SQUARE);
           }
         );
         break;
@@ -109,7 +114,7 @@ export class SceneManager {
           this.camera,
           this.overlay,
           () => {
-            this.goToScene(GameSceneId.MODERN_ARRIVAL);
+            void this.finishPastToPresent();
           },
           () => this.prepareModernArrival()
         );
@@ -120,7 +125,7 @@ export class SceneManager {
           this.camera,
           this.overlay,
           () => {
-            this.goToScene(GameSceneId.COOPERATIVE_FESTIVAL);
+            void this.transitionToScene(GameSceneId.COOPERATIVE_FESTIVAL);
           }
         );
         this.preparedModernArrival = null;
@@ -132,7 +137,7 @@ export class SceneManager {
           this.overlay,
           () => {
             this.overlay.hideNextButton();
-            this.goToScene(GameSceneId.FESTIVAL_PROMENADE,
+            void this.transitionToScene(GameSceneId.FESTIVAL_PROMENADE,
               phase5.transferRoomManager(), phase5.getSwitchState());
           }
         );
@@ -142,7 +147,8 @@ export class SceneManager {
       case GameSceneId.FESTIVAL_PROMENADE:
         this.currentScene = new Phase6FestivalScene(this.camera, this.overlay, existingRoom,
           inheritedSwitches, handoff => {
-            this.goToScene(GameSceneId.GRAND_FESTIVAL, handoff.roomManager, undefined, handoff);
+            void this.transitionToScene(GameSceneId.GRAND_FESTIVAL,
+              handoff.roomManager, undefined, handoff);
           });
         break;
 
@@ -156,26 +162,84 @@ export class SceneManager {
     }
   }
 
+  private async transitionToScene(sceneId: GameSceneId, existingRoom?: RoomManager,
+    inheritedSwitches?: { local: boolean; remote: boolean },
+    phase7Handoff?: Phase7GateHandoff): Promise<void> {
+    if (this.transitionPending) return;
+    this.transitionPending = true;
+    const mood = sceneId === GameSceneId.GRAND_FESTIVAL ? 'gate'
+      : sceneId <= GameSceneId.FESTIVAL_SQUARE ? 'memory' : 'moon';
+    try {
+      await this.curtain.cover(mood);
+      // Let the compositor animate the moon while WebGL prepares the next view.
+      // Rendering the retired scene here competes with shader compilation.
+      this.renderPaused = true;
+      this.goToScene(sceneId, existingRoom, inheritedSwitches, phase7Handoff);
+      if (this.currentScene) {
+        try {
+          await prepareSceneForReveal(this.appRenderer.renderer,
+            this.currentScene.scene, this.camera);
+          primeSceneFirstFrame(this.appRenderer.renderer,
+            this.currentScene.scene, this.camera);
+        } catch (error) {
+          console.warn('[Scene transition] GPU preparation skipped:', error);
+        }
+      }
+    } catch (error) {
+      console.error('[Scene transition] Scene swap failed:', error);
+    } finally {
+      this.renderPaused = false;
+      await this.curtain.reveal();
+      this.transitionPending = false;
+    }
+  }
+
   private prepareModernArrival(): void {
-    if (this.preparedModernArrival) return;
-    const prepared = new ModernArrivalScene(this.camera, this.overlay, () => {
-      this.goToScene(GameSceneId.COOPERATIVE_FESTIVAL);
-    });
-    prepared.prepareVisuals();
-    this.preparedModernArrival = prepared;
-    const renderer = (window as unknown as { game?: { renderer?: { renderer?: THREE.WebGLRenderer } } })
-      .game?.renderer?.renderer;
-    if (!renderer) return;
-    this.stopModernPrewarm = prewarmScene(renderer, prepared.scene);
+    if (this.preparedModernArrival || this.modernPreparation) return;
+    // The authored Phase 3C silver veil takes 3.5 seconds to close. Build after it
+    // is opaque, then hold that image until shaders and textures are ready.
+    this.modernPreparation = new Promise<void>(resolve =>
+      window.setTimeout(resolve, 3600)).then(async () => {
+      if (this.currentSceneId !== GameSceneId.FESTIVAL_SQUARE) return;
+      const prepared = new ModernArrivalScene(this.camera, this.overlay, () => {
+        void this.transitionToScene(GameSceneId.COOPERATIVE_FESTIVAL);
+      });
+      prepared.prepareVisuals();
+      this.preparedModernArrival = prepared;
+      try {
+        await prepareSceneForReveal(this.appRenderer.renderer, prepared.scene, this.camera);
+        const handoffCamera = this.camera.clone();
+        handoffCamera.position.set(0, 10, 10);
+        handoffCamera.lookAt(0, 16.5, -24);
+        handoffCamera.far = 350;
+        handoffCamera.updateProjectionMatrix();
+        primeSceneFirstFrame(this.appRenderer.renderer, prepared.scene, handoffCamera);
+      } catch (error) {
+        console.warn('[Scene transition] Modern arrival GPU preparation skipped:', error);
+      }
+    }).catch(error => console.error('[Scene transition] Modern arrival preparation:', error));
+  }
+
+  private async finishPastToPresent(): Promise<void> {
+    if (this.pastHandoffPending) return;
+    this.pastHandoffPending = true;
+    try {
+      if (this.modernPreparation) await this.modernPreparation;
+      this.goToScene(GameSceneId.MODERN_ARRIVAL);
+    } finally {
+      this.pastHandoffPending = false;
+    }
   }
 
   public update(delta: number, time: number) {
+    if (this.transitionPending || this.pastHandoffPending) return;
     if (this.currentScene) {
       this.currentScene.update(delta, time);
     }
   }
 
   public getActiveThreeScene(): THREE.Scene | null {
+    if (this.renderPaused) return null;
     if (this.currentScene instanceof GrandFestivalScene && this.currentScene.isFinished) return null;
     return this.currentScene ? this.currentScene.scene : null;
   }

@@ -21,7 +21,8 @@ async function run() {
   // 1. REGRESSION TEST: SCENE 1 (LANTERN CRAFTING TABLE)
   // ===========================================================================
   console.log('Testing Scene 1: Lantern Crafting Table (?scene=1)...');
-  await page.goto('http://127.0.0.1:5173/?scene=1', { waitUntil: 'networkidle0' });
+  await page.goto('http://127.0.0.1:5173/?scene=1', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.sceneManager?.currentSceneId === 1, { timeout: 60000 });
   await new Promise(r => setTimeout(r, 1200));
 
   await page.screenshot({
@@ -47,7 +48,8 @@ async function run() {
   // 2. REGRESSION TEST: SCENE 2 (DOOR REVEAL)
   // ===========================================================================
   console.log('Testing Scene 2: Door Reveal (?scene=2)...');
-  await page.goto('http://127.0.0.1:5173/?scene=2', { waitUntil: 'networkidle0' });
+  await page.goto('http://127.0.0.1:5173/?scene=2', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.sceneManager?.currentSceneId === 2, { timeout: 60000 });
   await new Promise(r => setTimeout(r, 1500));
 
   await page.screenshot({
@@ -59,7 +61,8 @@ async function run() {
   // 3. REGRESSION TEST: SCENE 3 (VILLAGE WALK & BAMBOO PATH)
   // ===========================================================================
   console.log('Testing Scene 3: Village Walk & Bamboo Path (?scene=3)...');
-  await page.goto('http://127.0.0.1:5173/?scene=3', { waitUntil: 'networkidle0' });
+  await page.goto('http://127.0.0.1:5173/?scene=3', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.sceneManager?.currentSceneId === 3, { timeout: 60000 });
   await new Promise(r => setTimeout(r, 1500));
 
   // Bamboo path start
@@ -88,7 +91,8 @@ async function run() {
   // 4. REGRESSION TEST: SCENE 4 (FESTIVAL SQUARE - SPECTATOR LIGHTING)
   // ===========================================================================
   console.log('Testing Scene 4: Festival Square Spectator Lighting (?scene=4)...');
-  await page.goto('http://127.0.0.1:5173/?scene=4', { waitUntil: 'networkidle0' });
+  await page.goto('http://127.0.0.1:5173/?scene=4', { waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => window.sceneManager?.currentSceneId === 4, { timeout: 60000 });
   await new Promise(r => setTimeout(r, 3600));
 
   await page.screenshot({

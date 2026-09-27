@@ -18,7 +18,8 @@ export class Game {
     this.sceneManager = new SceneManager(
       this.renderer.camera,
       this.overlay,
-      this.craftingUI
+      this.craftingUI,
+      this.renderer
     );
     this.clock = new THREE.Clock();
 

@@ -21,6 +21,7 @@ import { TextureGenerator } from '../utils/TextureGenerator';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { ElectricSwitchOverlay } from '../ui/ElectricSwitchOverlay';
 import { audioManager } from '../audio/AudioManager';
+import { preloadMemoryDeck } from '../multiplayer/MemoryCards';
 import {
   RoomManager,
   PlayerRole,
@@ -215,6 +216,8 @@ export class CooperativeFestivalScene implements IScene {
     // Start audio ambience
     audioManager.startModernAmbientAudio();
     audioManager.startFestivalVistaAmbience();
+    void preloadMemoryDeck().catch(error =>
+      console.warn('[Phase 5] Memory photo preload:', error));
 
     this.overlay.setSubtitle(
       this.isGuest ? 'Một ngọn đèn đang chờ bạn dưới ánh trăng...' : 'Một chiếc đèn thì hơi cô đơn cho một đêm Trung Thu.',

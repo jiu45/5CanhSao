@@ -18,8 +18,12 @@ export interface MemoryDeck {
   rounds: MemoryRound[];
 }
 
+let deckPromise: Promise<MemoryDeck> | null = null;
+let photoPromise: Promise<void> | null = null;
+const decodedPhotos = new Map<string, HTMLImageElement>();
+
 /** Edit only public/assets/memories/manifest.json to replace sample art with personal images. */
-export async function loadMemoryDeck(): Promise<MemoryDeck> {
+async function fetchMemoryDeck(): Promise<MemoryDeck> {
   const response = await fetch('/assets/memories/manifest.json');
   if (!response.ok) throw new Error('Memory manifest unavailable');
   const deck = await response.json() as MemoryDeck;
@@ -40,4 +44,36 @@ export async function loadMemoryDeck(): Promise<MemoryDeck> {
     }
   }
   return deck;
+}
+
+export function loadMemoryDeck(): Promise<MemoryDeck> {
+  if (!deckPromise) {
+    deckPromise = fetchMemoryDeck().catch(error => {
+      deckPromise = null;
+      throw error;
+    });
+  }
+  return deckPromise;
+}
+
+/** Fetch and decode personal photographs during Phase 5, before the Moon Alcove. */
+export function preloadMemoryDeck(): Promise<void> {
+  if (photoPromise) return photoPromise;
+  photoPromise = loadMemoryDeck().then(async deck => {
+    await Promise.all(deck.cards.map(async card => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.src = card.imageSrc;
+      try {
+        await image.decode();
+        decodedPhotos.set(card.imageSrc, image);
+      } catch (error) {
+        console.warn('[Memory Cards] Photo preload skipped:', card.id, error);
+      }
+    }));
+  }).catch(error => {
+    photoPromise = null;
+    throw error;
+  });
+  return photoPromise;
 }

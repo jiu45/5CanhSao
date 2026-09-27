@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 /** Release resources owned by one retired scene. Never call on a transferred scene. */
-export function disposeSceneResources(scene: THREE.Scene): void {
+export function disposeSceneResources(scene: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
