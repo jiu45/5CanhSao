@@ -6,6 +6,10 @@ const fabricColors = ['#9e3044', '#b96b43', '#314e65', '#78465a'];
 /** Thin modern festival façade: structural frame, lit paper, fabric and a readable counter. */
 export class MarketStallKit {
   private readonly canvasMaterials = new Map<number, THREE.MeshBasicMaterial>();
+  private readonly boxGeometries = new Map<string, THREE.BoxGeometry>();
+  private readonly washGeometry = new THREE.PlaneGeometry(3.55, 2.05);
+  private readonly frontGeometry = new THREE.PlaneGeometry(4.48, 1.28);
+  private readonly lampGeometry = new THREE.SphereGeometry(0.2, 8, 6);
   private readonly frame = new THREE.MeshStandardMaterial({ color: 0x604344, roughness: 0.72 });
   private readonly warm = new THREE.MeshBasicMaterial({ color: 0xf5bf72 });
   private readonly dark = new THREE.MeshStandardMaterial({ color: 0x422e37, roughness: 0.92 });
@@ -15,12 +19,12 @@ export class MarketStallKit {
     const group = new THREE.Group();
     const beam = (w: number, h: number, d: number, x: number, y: number, z: number,
       mat: THREE.Material = this.frame) => {
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      const mesh = new THREE.Mesh(this.boxGeometry(w, h, d), mat);
       mesh.position.set(x, y, z); group.add(mesh); return mesh;
     };
     // Open sides keep this as a shallow illustrated façade, with a clear interior glow.
     beam(3.9, 2.55, 0.07, 0, 1.45, -0.8, this.dark);
-    const wash = new THREE.Mesh(new THREE.PlaneGeometry(3.55, 2.05),
+    const wash = new THREE.Mesh(this.washGeometry,
       new THREE.MeshBasicMaterial({ color: 0xe8a460, transparent: true, opacity: 0.24,
         side: THREE.DoubleSide, depthWrite: false }));
     wash.position.set(0, 1.65, -0.74); group.add(wash);
@@ -29,24 +33,34 @@ export class MarketStallKit {
     beam(3.85, 0.63, 0.73, 0, 0.87, 0.58, this.dark);
     beam(3.9, 0.09, 0.82, 0, 1.22, 0.63, this.frame);
     beam(3.75, 0.045, 0.06, 0, 1.31, 1.05, this.warm);
-    const front = new THREE.Mesh(new THREE.PlaneGeometry(4.48, 1.28),
+    const front = new THREE.Mesh(this.frontGeometry,
       this.getCanvasMaterial(variant));
     front.position.set(0, 2.83, 0.75); group.add(front);
     // Mooncake trays, tea jars and lantern craft packets are paper silhouettes.
     for (let i = 0; i < 5; i++) {
-      const item = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.18 + (i % 2) * 0.08, 0.3),
+      const item = new THREE.Mesh(this.boxGeometry(0.36, 0.18 + (i % 2) * 0.08, 0.3),
         i % 2 ? this.warm : this.frame);
       item.position.set(-1.22 + i * 0.59, 1.41, 0.64);
       item.rotation.y = i % 2 ? 0.14 : -0.12;
       group.add(item);
     }
     for (const x of [-1.55, 1.55]) {
-      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), this.lantern);
+      const lamp = new THREE.Mesh(this.lampGeometry, this.lantern);
       lamp.position.set(x, 2.15, 0.84); lamp.scale.set(0.9, 1.13, 0.75);
       group.add(lamp);
       beam(0.018, 0.3, 0.018, x, 2.55, 0.84, this.warm);
     }
     return group;
+  }
+
+  private boxGeometry(w: number, h: number, d: number): THREE.BoxGeometry {
+    const key = `${w}:${h}:${d}`;
+    let geometry = this.boxGeometries.get(key);
+    if (!geometry) {
+      geometry = new THREE.BoxGeometry(w, h, d);
+      this.boxGeometries.set(key, geometry);
+    }
+    return geometry;
   }
 
   private getCanvasMaterial(variant: number): THREE.MeshBasicMaterial {
