@@ -5,4 +5,5 @@ export interface IScene {
   update(delta: number, time: number): void;
   destroy(): void;
   scene: THREE.Scene;
+  prepareAlternateViews?(renderer: THREE.WebGLRenderer): Promise<void>;
 }

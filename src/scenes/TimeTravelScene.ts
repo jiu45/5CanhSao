@@ -22,7 +22,8 @@ export class TimeTravelScene implements IScene {
   private rotSpeeds: Float32Array;
   private timerIds: number[] = [];
 
-  constructor(camera: THREE.PerspectiveCamera, overlay: StoryOverlay, onComplete: () => void) {
+  constructor(camera: THREE.PerspectiveCamera, overlay: StoryOverlay,
+    onComplete: () => void, private readonly onSequenceStarted?: () => void) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x04060d);
     this.camera = camera;
@@ -111,6 +112,7 @@ export class TimeTravelScene implements IScene {
   }
 
   private startSequence() {
+    this.onSequenceStarted?.();
     // Play accelerating then slowing clock tick-tock
     audioManager.playClockRewind();
 

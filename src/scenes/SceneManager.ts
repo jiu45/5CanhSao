@@ -30,6 +30,13 @@ export enum GameSceneId {
   GRAND_FESTIVAL = 8
 }
 
+interface PreparedEarlyScene {
+  id: GameSceneId;
+  scene: IScene;
+  cameraPose: THREE.PerspectiveCamera;
+  ready: Promise<void>;
+}
+
 export class SceneManager {
   private camera: THREE.PerspectiveCamera;
   private overlay: StoryOverlay;
@@ -38,6 +45,7 @@ export class SceneManager {
   public currentSceneId: GameSceneId = GameSceneId.TIME_TRAVEL;
   private preparedModernArrival: ModernArrivalScene | null = null;
   private modernPreparation: Promise<void> | null = null;
+  private preparedEarlyScene: PreparedEarlyScene | null = null;
   private pastHandoffPending = false;
   private transitionPending = false;
   private renderPaused = false;
@@ -69,38 +77,50 @@ export class SceneManager {
       }
     }
 
+    const earlyScene = this.preparedEarlyScene?.id === sceneId
+      ? this.preparedEarlyScene : null;
+    if (earlyScene) {
+      this.restoreCameraPose(earlyScene.cameraPose);
+      this.preparedEarlyScene = null;
+      if (earlyScene.scene instanceof FestivalSquareScene) {
+        earlyScene.scene.adoptCamera(this.camera);
+      }
+    }
+
     this.currentSceneId = sceneId;
 
     switch (sceneId) {
       case GameSceneId.TIME_TRAVEL:
         this.currentScene = new TimeTravelScene(this.camera, this.overlay, () => {
           void this.transitionToScene(GameSceneId.LANTERN_CRAFTING);
-        });
+        }, () => this.prepareEarlyScene(GameSceneId.LANTERN_CRAFTING));
         break;
 
       case GameSceneId.LANTERN_CRAFTING:
-        this.currentScene = new LanternCraftingScene(
+        this.currentScene = earlyScene?.scene ?? new LanternCraftingScene(
           this.camera,
           this.overlay,
           this.craftingUI,
           () => {
             void this.transitionToScene(GameSceneId.DOOR_REVEAL);
-          }
+          },
+          () => this.prepareEarlyScene(GameSceneId.DOOR_REVEAL)
         );
         break;
 
       case GameSceneId.DOOR_REVEAL:
-        this.currentScene = new DoorRevealScene(
+        this.currentScene = earlyScene?.scene ?? new DoorRevealScene(
           this.camera,
           this.overlay,
           () => {
             void this.transitionToScene(GameSceneId.VILLAGE_WALK);
-          }
+          },
+          () => this.prepareEarlyScene(GameSceneId.VILLAGE_WALK)
         );
         break;
 
       case GameSceneId.VILLAGE_WALK:
-        this.currentScene = new VillageWalkScene(
+        this.currentScene = earlyScene?.scene ?? new VillageWalkScene(
           this.camera,
           this.overlay,
           () => {
@@ -110,7 +130,7 @@ export class SceneManager {
         break;
 
       case GameSceneId.FESTIVAL_SQUARE:
-        this.currentScene = new FestivalSquareScene(
+        this.currentScene = earlyScene?.scene ?? new FestivalSquareScene(
           this.camera,
           this.overlay,
           () => {
@@ -162,6 +182,58 @@ export class SceneManager {
     }
   }
 
+  private restoreCameraPose(pose: THREE.PerspectiveCamera): void {
+    this.camera.position.copy(pose.position);
+    this.camera.quaternion.copy(pose.quaternion);
+    this.camera.up.copy(pose.up);
+    this.camera.near = pose.near;
+    this.camera.far = pose.far;
+    this.camera.fov = pose.fov;
+    this.camera.aspect = pose.aspect;
+    this.camera.zoom = pose.zoom;
+    this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld();
+  }
+
+  /** Build the next memory during an existing story beat, without starting its UI. */
+  private prepareEarlyScene(id: GameSceneId): void {
+    if (this.preparedEarlyScene?.id === id || id < GameSceneId.LANTERN_CRAFTING ||
+      id > GameSceneId.FESTIVAL_SQUARE) return;
+    const playingPose = this.camera.clone();
+    let scene: IScene;
+    let cameraPose: THREE.PerspectiveCamera;
+    let stagingCamera: THREE.PerspectiveCamera | null = null;
+    try {
+      if (id === GameSceneId.LANTERN_CRAFTING) {
+        scene = new LanternCraftingScene(this.camera, this.overlay, this.craftingUI,
+          () => { void this.transitionToScene(GameSceneId.DOOR_REVEAL); },
+          () => this.prepareEarlyScene(GameSceneId.DOOR_REVEAL));
+      } else if (id === GameSceneId.DOOR_REVEAL) {
+        scene = new DoorRevealScene(this.camera, this.overlay,
+          () => { void this.transitionToScene(GameSceneId.VILLAGE_WALK); },
+          () => this.prepareEarlyScene(GameSceneId.VILLAGE_WALK));
+      } else if (id === GameSceneId.VILLAGE_WALK) {
+        scene = new VillageWalkScene(this.camera, this.overlay,
+          () => { void this.transitionToScene(GameSceneId.FESTIVAL_SQUARE); });
+      } else {
+        stagingCamera = this.camera.clone();
+        scene = new FestivalSquareScene(stagingCamera, this.overlay,
+          () => { void this.finishPastToPresent(); },
+          () => this.prepareModernArrival());
+      }
+      cameraPose = stagingCamera ?? this.camera.clone();
+    } catch (error) {
+      console.warn('[Scene transition] Early scene build skipped:', error);
+      return;
+    } finally {
+      this.restoreCameraPose(playingPose);
+    }
+    const ready = prepareSceneForReveal(this.appRenderer.renderer, scene.scene, cameraPose)
+      .then(() => scene.prepareAlternateViews?.(this.appRenderer.renderer))
+      .catch(error => console.warn('[Scene transition] Early GPU preparation skipped:', error));
+    this.preparedEarlyScene = { id, scene, cameraPose, ready };
+  }
+
   private async transitionToScene(sceneId: GameSceneId, existingRoom?: RoomManager,
     inheritedSwitches?: { local: boolean; remote: boolean },
     phase7Handoff?: Phase7GateHandoff): Promise<void> {
@@ -174,13 +246,22 @@ export class SceneManager {
       // Let the compositor animate the moon while WebGL prepares the next view.
       // Rendering the retired scene here competes with shader compilation.
       this.renderPaused = true;
+      if (this.preparedEarlyScene?.id === sceneId) {
+        await this.preparedEarlyScene.ready;
+      }
       this.goToScene(sceneId, existingRoom, inheritedSwitches, phase7Handoff);
       if (this.currentScene) {
         try {
           await prepareSceneForReveal(this.appRenderer.renderer,
             this.currentScene.scene, this.camera);
+          await this.currentScene.prepareAlternateViews?.(this.appRenderer.renderer);
           primeSceneFirstFrame(this.appRenderer.renderer,
             this.currentScene.scene, this.camera);
+          if (sceneId === GameSceneId.VILLAGE_WALK) {
+            // Construct the next courtyard while the current curtain is opaque.
+            // Its shaders finish compiling while the player walks the village path.
+            this.prepareEarlyScene(GameSceneId.FESTIVAL_SQUARE);
+          }
         } catch (error) {
           console.warn('[Scene transition] GPU preparation skipped:', error);
         }
@@ -208,6 +289,7 @@ export class SceneManager {
       this.preparedModernArrival = prepared;
       try {
         await prepareSceneForReveal(this.appRenderer.renderer, prepared.scene, this.camera);
+        await prepared.prepareAlternateViews(this.appRenderer.renderer);
         const handoffCamera = this.camera.clone();
         handoffCamera.position.set(0, 10, 10);
         handoffCamera.lookAt(0, 16.5, -24);

@@ -53,7 +53,8 @@ export class DoorRevealScene implements IScene {
   constructor(
     camera: THREE.PerspectiveCamera,
     overlay: StoryOverlay,
-    onComplete: () => void
+    onComplete: () => void,
+    private readonly onReadyToLeave?: () => void
   ) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x04091a);
@@ -320,6 +321,7 @@ export class DoorRevealScene implements IScene {
     }, 2800);
 
     const t3 = window.setTimeout(() => {
+      this.onReadyToLeave?.();
       this.overlay.showNextButton("Bước qua ngưỡng cửa rước đèn 🏮", () => {
         this.startThresholdWalk();
       });

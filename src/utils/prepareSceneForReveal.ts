@@ -2,10 +2,34 @@ import * as THREE from 'three';
 
 const yieldToBrowser = () => new Promise<void>(resolve => window.setTimeout(resolve, 16));
 
+/** Compile the variants used by EffectComposer's linear scene render target. */
+export async function compileForComposer(renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene, camera: THREE.Camera): Promise<void> {
+  const compileTarget = new THREE.WebGLRenderTarget(4, 4);
+  const previousTarget = renderer.getRenderTarget();
+  let compilation: Promise<unknown>;
+  try {
+    renderer.setRenderTarget(compileTarget);
+    // compileAsync registers the programs synchronously, then waits for the GPU.
+    // Release the target immediately so the currently playing scene may render.
+    compilation = renderer.compileAsync(scene, camera);
+  } catch (error) {
+    compileTarget.dispose();
+    throw error;
+  } finally {
+    renderer.setRenderTarget(previousTarget);
+  }
+  try {
+    await compilation;
+  } finally {
+    compileTarget.dispose();
+  }
+}
+
 /** Compile scene shaders and upload canvas textures before the curtain opens. */
 export async function prepareSceneForReveal(renderer: THREE.WebGLRenderer,
   scene: THREE.Scene, camera: THREE.Camera): Promise<void> {
-  await renderer.compileAsync(scene, camera);
+  await compileForComposer(renderer, scene, camera);
 
   const textures = new Set<THREE.Texture>();
   scene.traverse(object => {

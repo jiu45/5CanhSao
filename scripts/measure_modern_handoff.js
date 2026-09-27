@@ -20,8 +20,15 @@ try {
   });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('http://127.0.0.1:5173/?scene=4',
+  const integrated = process.env.INTEGRATED === '1';
+  await page.goto(`http://127.0.0.1:5173/?scene=${integrated ? 2 : 4}`,
     { waitUntil: 'domcontentloaded', timeout: 60000 });
+  if (integrated) {
+    await page.waitForFunction(() => window.sceneManager?.currentSceneId === 2);
+    await page.evaluate(() => window.sceneManager.transitionToScene(3));
+    await page.evaluate(() => window.sceneManager.preparedEarlyScene.ready);
+    await page.evaluate(() => window.sceneManager.transitionToScene(4));
+  }
   await page.waitForFunction(() => window.sceneManager?.currentSceneId === 4);
   await page.evaluate(() => {
     window.__timings = [];
@@ -47,7 +54,8 @@ try {
   await page.evaluate(() => window.sceneManager.currentScene.startMemoryAscent());
   await page.waitForFunction(() => window.sceneManager?.currentSceneId === 5,
     { timeout: 90000 });
-  await new Promise(resolve => setTimeout(resolve, 1500));
+  await new Promise(resolve => setTimeout(resolve,
+    Number(process.env.MODERN_OBSERVE_MS || 1500)));
   const result = await page.evaluate(() => {
     const frames = window.__handoffFrames;
     const modern = frames.filter(frame => frame.scene === 5).map(frame => frame.duration);

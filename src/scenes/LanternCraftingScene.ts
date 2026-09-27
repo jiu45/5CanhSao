@@ -27,7 +27,8 @@ export class LanternCraftingScene implements IScene {
     camera: THREE.PerspectiveCamera,
     overlay: StoryOverlay,
     craftingUI: CraftingUI,
-    onComplete: () => void
+    onComplete: () => void,
+    private readonly onReadyToLeave?: () => void
   ) {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x020409);
@@ -119,6 +120,7 @@ export class LanternCraftingScene implements IScene {
 
   private onIgnited() {
     this.isIgnited = true;
+    this.onReadyToLeave?.();
     audioManager.playCandleIgnite();
     this.overlay.setSubtitle(StoryConfig.craftingSubtitles.completed, 5000);
 

@@ -8,6 +8,7 @@ import { audioManager } from '../audio/AudioManager';
 import { StoryConfig } from '../config/StoryConfig';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { LionDanceGestureOverlay } from '../ui/LionDanceGestureOverlay';
+import { compileForComposer } from '../utils/prepareSceneForReveal';
 
 export enum SquareSceneState {
   SPECTATOR_INTRO = 0,
@@ -23,7 +24,7 @@ export class FestivalSquareScene implements IScene {
   public scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
   private overlay: StoryOverlay;
-  private gestureOverlay: LionDanceGestureOverlay;
+  private gestureOverlay!: LionDanceGestureOverlay;
   private onComplete: () => void;
 
   // Scene Props
@@ -89,6 +90,55 @@ export class FestivalSquareScene implements IScene {
   private tactileOffset = { x: 0, y: 0 };
   private povReactionOffset = { x: 0, y: 0, z: 0 };
   private povReactionTimer: number = 0;
+
+  /** Warm both authored camera cuts while the incoming scene is still covered. */
+  public async prepareAlternateViews(renderer: THREE.WebGLRenderer): Promise<void> {
+    const cameraPosition = this.camera.position.clone();
+    const cameraQuaternion = this.camera.quaternion.clone();
+    const cameraUp = this.camera.up.clone();
+    const affected = [this.fgKidsLeft, this.fgKidsRight, this.lantern.group,
+      this.lion.group, this.reverseAudienceGroup, this.ascentTransitionGroup,
+      this.groundHeroChildMesh, this.groundHeroLanternLight,
+      ...this.buntingMeshes];
+    const visibility = affected.map(object => [object, object.visible] as const);
+    try {
+      this.fgKidsLeft.visible = false;
+      this.fgKidsRight.visible = false;
+      this.lantern.group.visible = false;
+      this.lion.setInsideView(true);
+      this.reverseAudienceGroup.visible = true;
+      this.camera.position.copy(this.camLionPovPos);
+      this.camera.up.set(0, 1, 0);
+      this.camera.lookAt(this.camLionPovLookAt);
+      await compileForComposer(renderer, this.scene, this.camera);
+
+      this.reverseAudienceGroup.visible = false;
+      this.lion.setInsideView(false);
+      this.ascentTransitionGroup.visible = true;
+      this.groundHeroChildMesh.visible = true;
+      this.groundHeroLanternLight.visible = true;
+      this.buntingMeshes.forEach(mesh => { mesh.visible = false; });
+      this.camera.position.copy(cameraPosition);
+      this.camera.quaternion.copy(cameraQuaternion);
+      await compileForComposer(renderer, this.scene, this.camera);
+    } finally {
+      for (const [object, visible] of visibility) object.visible = visible;
+      this.camera.position.copy(cameraPosition);
+      this.camera.quaternion.copy(cameraQuaternion);
+      this.camera.up.copy(cameraUp);
+      this.camera.updateMatrixWorld();
+    }
+  }
+
+  /** Prepared scenes use a staging camera until the live scene takes ownership. */
+  public adoptCamera(camera: THREE.PerspectiveCamera): void {
+    if (this.camera === camera) return;
+    const stagingCamera = this.camera;
+    for (const child of [...stagingCamera.children]) camera.add(child);
+    this.scene.remove(stagingCamera);
+    this.scene.add(camera);
+    this.camera = camera;
+  }
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -162,13 +212,6 @@ export class FestivalSquareScene implements IScene {
 
     // Build the intimate, encircling village courtyard environment
     this.buildFestivalEnvironment();
-
-    // 5. Interactive Lion Dance Gesture Minigame Overlay
-    this.gestureOverlay = new LionDanceGestureOverlay();
-    this.gestureOverlay.setOnDragOffset((dx, dy) => {
-      this.tactileOffset.x = dx;
-      this.tactileOffset.y = dy;
-    });
   }
 
   private buildFestivalEnvironment() {
@@ -549,6 +592,11 @@ export class FestivalSquareScene implements IScene {
   }
 
   public init() {
+    this.gestureOverlay = new LionDanceGestureOverlay();
+    this.gestureOverlay.setOnDragOffset((dx, dy) => {
+      this.tactileOffset.x = dx;
+      this.tactileOffset.y = dy;
+    });
     this.sceneTimer = 0;
     this.revealPhase = 0;
     this.drumTimer = 0;

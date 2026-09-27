@@ -10,6 +10,7 @@ import { StoryOverlay } from '../ui/StoryOverlay';
 import { DistantFestivalVista } from '../props/DistantFestivalVista';
 import { PapercraftFoliageKit } from '../props/papercraft/PapercraftFoliageKit';
 import { PresentCrowdKit } from '../props/papercraft/PresentCrowdKit';
+import { compileForComposer } from '../utils/prepareSceneForReveal';
 
 export class ModernArrivalScene implements IScene {
   public scene: THREE.Scene;
@@ -174,6 +175,23 @@ export class ModernArrivalScene implements IScene {
     this.createDistantFestival();
     this.distantFestivalVista = new DistantFestivalVista();
     this.scene.add(this.distantFestivalVista.group);
+  }
+
+  /** Precompile the illuminated park that becomes visible after the moon bridge. */
+  public async prepareAlternateViews(renderer: THREE.WebGLRenderer): Promise<void> {
+    this.prepareVisuals();
+    const previousVisibility = this.distantFestivalGroup.visible;
+    const warmCamera = this.camera.clone();
+    warmCamera.far = 350;
+    warmCamera.position.copy(this.playerCamPos);
+    warmCamera.lookAt(this.playerLookAt);
+    warmCamera.updateProjectionMatrix();
+    try {
+      this.distantFestivalGroup.visible = true;
+      await compileForComposer(renderer, this.scene, warmCamera);
+    } finally {
+      this.distantFestivalGroup.visible = previousVisibility;
+    }
   }
 
   private tuneBloomSettings() {
