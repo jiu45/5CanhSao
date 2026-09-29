@@ -26,7 +26,7 @@ export class ModernArrivalScene implements IScene {
   private distantFestivalVista!: DistantFestivalVista;
 
   // Key visual actors & anchors
-  private playerMesh!: THREE.Mesh;
+  private playerAnchor!: THREE.Object3D;
   private giantMoonRingMesh!: THREE.Mesh;
   private giantMoonCrescentMesh!: THREE.Mesh;
   private giantMoonLight!: THREE.PointLight;
@@ -81,8 +81,8 @@ export class ModernArrivalScene implements IScene {
   private readonly handoffLookAt = new THREE.Vector3(0, 16.5, -24.0);
 
   // 2. Player closeup on terrace knoll (Framing handheld star lantern and player)
-  private readonly playerCamPos = new THREE.Vector3(0.55, 2.35, 4.20);
-  private readonly playerLookAt = new THREE.Vector3(0.95, 1.95, 3.70);
+  private readonly playerCamPos = new THREE.Vector3(-0.1, 2.6, 5.65);
+  private readonly playerLookAt = new THREE.Vector3(0.8, 1.8, 2.9);
 
   // 3. Midground park sweep
   private readonly sweepCamPos = new THREE.Vector3(-1.6, 3.1, 4.0);
@@ -148,7 +148,9 @@ export class ModernArrivalScene implements IScene {
     this.createSoftTransitionVeil();
 
     // Start modern ambient audio: park night wind + distant festive drum beats
+    audioManager.stopPastAmbience();
     audioManager.startModernAmbientAudio();
+    audioManager.setScoreMood('present');
 
     // Opening subtitle: Moon as the timeless bridge
     this.overlay.setSubtitle(StoryConfig.modernArrival.moonTransition1, 4600);
@@ -170,7 +172,7 @@ export class ModernArrivalScene implements IScene {
     this.visualsPrepared = true;
     this.setupLighting();
     this.createElevatedTerraceKnoll();
-    this.createPlayerAvatar();
+    this.createPlayerAnchor();
     this.createMidgroundPark();
     this.createDistantFestival();
     this.distantFestivalVista = new DistantFestivalVista();
@@ -318,7 +320,7 @@ export class ModernArrivalScene implements IScene {
     const ledMat = new THREE.MeshStandardMaterial({
       color: 0xfff08a,
       emissive: 0xfde047,
-      emissiveIntensity: 1.45,
+      emissiveIntensity: 1.0,
       roughness: 0.35
     });
 
@@ -326,7 +328,7 @@ export class ModernArrivalScene implements IScene {
     const topLipLedMat = new THREE.MeshStandardMaterial({
       color: 0xffe89e,
       emissive: 0xf59e0b,
-      emissiveIntensity: 1.05,
+      emissiveIntensity: 0.8,
       roughness: 0.4
     });
 
@@ -471,7 +473,7 @@ export class ModernArrivalScene implements IScene {
       const capMat = new THREE.MeshStandardMaterial({
         color: 0xfff08a,
         emissive: 0xfde047,
-        emissiveIntensity: 2.0
+        emissiveIntensity: 1.3
       });
       const capMesh = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.05, 0.24), capMat);
       capMesh.position.set(bx, 1.50 + wallHeight + 0.17, bz);
@@ -650,21 +652,10 @@ export class ModernArrivalScene implements IScene {
     this.modernArrivalGroup.add(shrub2);
   }
 
-  private createPlayerAvatar() {
-    // Contemporary stylized player avatar (standing on right terrace knoll looking forward)
-    const playerTex = TextureGenerator.createModernPlayerCharacterTexture();
-    const playerGeo = new THREE.PlaneGeometry(1.15, 1.85);
-    const playerMat = new THREE.MeshBasicMaterial({
-      map: playerTex,
-      transparent: true,
-      alphaTest: 0.05,
-      side: THREE.DoubleSide
-    });
-    this.playerMesh = new THREE.Mesh(playerGeo, playerMat);
-    this.playerMesh.position.set(1.15, 2.30, 4.3);
-    this.playerMesh.scale.set(0.86, 0.86, 0.86);
-    this.playerMesh.rotation.y = -0.35;
-    this.modernArrivalGroup.add(this.playerMesh);
+  private createPlayerAnchor() {
+    // Keep the walk path anchor for staging, while the lantern alone represents
+    // the player on screen, as it does through the rest of the story.
+    this.playerAnchor = new THREE.Object3D();
 
     // Handheld Star Lantern (held comfortably at waist/hip height)
     this.lantern.group.position.set(0.95, 1.90, 4.0);
@@ -1013,7 +1004,7 @@ export class ModernArrivalScene implements IScene {
     const ringMat = new THREE.MeshStandardMaterial({
       color: 0xfff08a,
       emissive: 0xfbbf24,
-      emissiveIntensity: 3.5,
+      emissiveIntensity: 2.1,
       roughness: 0.15
     });
     this.giantMoonRingMesh = new THREE.Mesh(ringGeo, ringMat);
@@ -1026,7 +1017,7 @@ export class ModernArrivalScene implements IScene {
     const crescentMat = new THREE.MeshBasicMaterial({
       map: giantMoonTex,
       transparent: true,
-      blending: THREE.AdditiveBlending,
+      opacity: 0.78,
       side: THREE.DoubleSide
     });
     this.giantMoonCrescentMesh = new THREE.Mesh(crescentGeo, crescentMat);
@@ -1036,7 +1027,7 @@ export class ModernArrivalScene implements IScene {
     this.distantFestivalGroup.add(pedestalGroup);
 
     // 4. Basin Spotlight & Plaza Illumination
-    this.giantMoonLight = new THREE.PointLight(0xffbe3b, 7.5, 55, 1.2);
+    this.giantMoonLight = new THREE.PointLight(0xffbe3b, 5.2, 55, 1.2);
     this.giantMoonLight.position.set(0, 1.8, -49.5);
     this.distantFestivalGroup.add(this.giantMoonLight);
 
@@ -1137,13 +1128,15 @@ export class ModernArrivalScene implements IScene {
 
         // Player avatar movement with subtle walking bob
         const bob = Math.abs(Math.sin(this.approachTimer * 6.5)) * 0.045;
-        this.playerMesh.position.set(pt.x, pt.y + 0.92 + bob, pt.z);
-        this.playerMesh.rotation.y = Math.atan2(-tangent.z, tangent.x) - Math.PI / 2;
+        this.playerAnchor.position.set(pt.x, pt.y + 0.92 + bob, pt.z);
+        this.playerAnchor.rotation.y = Math.atan2(-tangent.z, tangent.x) - Math.PI / 2;
 
-        // Modern handheld star lantern follows right hand
-        const handOffset = normal.clone().multiplyScalar(0.42).add(new THREE.Vector3(0, 0.60 + bob * 0.5, 0));
+        // Frame the lantern as the walking character in the near paper layer.
+        const handOffset = normal.clone().multiplyScalar(0.48)
+          .addScaledVector(tangent, -0.85)
+          .add(new THREE.Vector3(0, 1.82 + bob * 0.5, 0));
         this.lantern.group.position.copy(pt).add(handOffset);
-        this.lantern.group.rotation.z = Math.sin(this.approachTimer * 4.0) * 0.08;
+        this.lantern.group.scale.setScalar(0.38);
 
         // Camera smooth third-person follow
         const camBack = tangent.clone().multiplyScalar(-4.4);
@@ -1155,6 +1148,8 @@ export class ModernArrivalScene implements IScene {
         const lookAhead = pt.clone().add(tangent.clone().multiplyScalar(18.0));
         lookAhead.y = pt.y + 1.7;
         this.camera.lookAt(lookAhead);
+        this.lantern.group.lookAt(this.camera.position);
+        this.lantern.group.rotateZ(Math.sin(this.approachTimer * 4.0) * 0.08);
 
         // Footsteps sound
         this.approachFootstepTimer += delta;
@@ -1190,9 +1185,11 @@ export class ModernArrivalScene implements IScene {
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
 
         const breath = Math.sin(time * 1.5) * 0.015;
-        this.playerMesh.position.set(pt.x, pt.y + 0.92 + breath, pt.z);
+        this.playerAnchor.position.set(pt.x, pt.y + 0.92 + breath, pt.z);
 
-        const handOffset = normal.clone().multiplyScalar(0.42).add(new THREE.Vector3(0, 0.60 + breath * 0.5, 0));
+        const handOffset = normal.clone().multiplyScalar(0.48)
+          .addScaledVector(tangent, -0.85)
+          .add(new THREE.Vector3(0, 1.82 + breath * 0.5, 0));
         this.lantern.group.position.copy(pt).add(handOffset);
 
         const camBack = tangent.clone().multiplyScalar(-4.4);
@@ -1202,6 +1199,7 @@ export class ModernArrivalScene implements IScene {
         const lookAhead = pt.clone().add(tangent.clone().multiplyScalar(18.0));
         lookAhead.y = pt.y + 1.7;
         this.camera.lookAt(lookAhead);
+        this.lantern.group.lookAt(this.camera.position);
       }
       // SUB-STAGE 4B.B: Festival Vista Revealed — Anticipation, Slow Dolly & Atmosphere
       else if (this.isVistaRevealed) {
@@ -1278,8 +1276,12 @@ export class ModernArrivalScene implements IScene {
 
     // 2. Handheld Star Lantern gentle breathing LED pulse & sway
     this.lantern.update(delta, 0.05);
+    // The close lantern should draw the eye without bleaching the stone terrace.
+    this.lantern.candleLight.intensity *= 0.5;
     const lanternBob = Math.sin(time * 2.4) * 0.008;
-    this.lantern.group.position.set(0.95, 1.90 + lanternBob, 4.0);
+    if (!this.isApproaching && !this.approachCompleted) {
+      this.lantern.group.position.set(0.95, 1.90 + lanternBob, 4.0);
+    }
 
     // 3. Contemporary visitors gentle strolling animation
     this.parkVisitorMeshes.forEach((mesh, idx) => {
@@ -1288,7 +1290,7 @@ export class ModernArrivalScene implements IScene {
 
     // 4. Giant Moon Sculpture radiant breathing pulse & gentle rotation
     if (this.giantMoonLight) {
-      this.giantMoonLight.intensity = 7.5 + Math.sin(time * 2.0) * 0.6;
+      this.giantMoonLight.intensity = 5.2 + Math.sin(time * 2.0) * 0.4;
     }
     if (this.giantMoonRingMesh) {
       this.giantMoonRingMesh.rotation.z = Math.sin(time * 0.35) * 0.04;
@@ -1296,7 +1298,7 @@ export class ModernArrivalScene implements IScene {
 
     // 5. Park lamp lights subtle steady electric hum
     this.parkLampLights.forEach((light, idx) => {
-      light.intensity = 2.6 + Math.sin(time * 6.0 + idx * 2.0) * 0.08;
+      light.intensity = 2.0 + Math.sin(time * 6.0 + idx * 2.0) * 0.08;
     });
 
     // 6. Tree canopies subtle breeze sway

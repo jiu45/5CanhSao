@@ -337,6 +337,15 @@ export class StarLantern {
     this.paperYellowMat.emissiveIntensity = 1.6;
   }
 
+  public extinguish(): void {
+    if (this.isModern || !this.isLit) return;
+    this.isLit = false;
+    this.flameMesh.visible = false;
+    this.candleLight.intensity = 0.03;
+    this.paperRedMat.emissiveIntensity = 0.04;
+    this.paperYellowMat.emissiveIntensity = 0.05;
+  }
+
   public setModernized(modern: boolean) {
     this.isModern = modern;
     if (modern) {
@@ -424,7 +433,10 @@ export class StarLantern {
     const clampedWind = Math.min(1.4, Math.max(0, effectiveWind));
 
     const flicker = Math.sin(this.flameTime * 1.8) * 0.18 + Math.cos(this.flameTime * 4.2) * 0.12;
-    this.candleLight.intensity = (2.8 + flicker * 0.7) * (1 - clampedWind * 0.35);
+    const windGlow = Math.max(0.12, 1 - clampedWind * 0.72);
+    this.candleLight.intensity = (2.8 + flicker * 0.7) * Math.max(0.2, 1 - clampedWind * 0.62);
+    this.paperRedMat.emissiveIntensity = 1.1 * windGlow;
+    this.paperYellowMat.emissiveIntensity = 1.6 * windGlow;
     this.candleLight.position.x = Math.sin(this.flameTime * 2.2) * 0.012 - clampedWind * 0.03;
     this.candleLight.position.y = Math.cos(this.flameTime * 2.8) * 0.01 - clampedWind * 0.02;
 

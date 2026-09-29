@@ -133,14 +133,14 @@ export class LionDanceGestureOverlay {
     `;
     this.bannerEl.innerHTML = `
       <div class="lion-gesture-title" style="
-        font-family: 'Cinzel', serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 1.45rem;
         letter-spacing: 0.14em;
         color: #fef08a;
         text-shadow: 0 0 18px rgba(245, 158, 11, 0.9), 0 2px 10px rgba(0,0,0,0.95);
       "></div>
       <div class="lion-gesture-sub" style="
-        font-family: 'Quicksand', sans-serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 0.95rem;
         color: #fffaf0;
         margin-top: 5px;
@@ -160,7 +160,7 @@ export class LionDanceGestureOverlay {
       left: 50%;
       transform: translate(-50%, -50%) scale(0.6);
       opacity: 0;
-      font-family: 'Cinzel', serif;
+      font-family: 'Segoe UI', system-ui, Arial, sans-serif;
       font-size: 2.3rem;
       font-weight: 700;
       color: #ffd700;

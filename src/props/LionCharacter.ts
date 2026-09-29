@@ -112,7 +112,8 @@ export class LionCharacter {
     [-0.30, 0.30].forEach(ex => {
       const eyelid = new THREE.Mesh(eyelidGeo, eyelidMat.clone());
       eyelid.position.set(ex, 0.14, 0.025);
-      eyelid.scale.set(1.0, 0.001, 1.0); // Retracted when open
+      eyelid.scale.set(1.0, 0.001, 1.0);
+      eyelid.visible = false; // Never render the red plane over an open eye.
       this.headGroup.add(eyelid);
       this.eyelids.push(eyelid);
     });
@@ -388,23 +389,24 @@ export class LionCharacter {
     // 1. Mechanical Eyelids (Blinking & twitching rhythmically to the drum beat)
     // -------------------------------------------------------------------------
     this.blinkTimer += delta;
-    // Rhythmic drum cadence sync: blink every ~1.1s or rapid double-blink
-    if (this.blinkTimer > 1.15) {
+    // An occasional blink leaves the printed eyes readable between drum cues.
+    if (this.blinkTimer > 2.8) {
       this.blinkTimer = 0;
       this.triggerDrumBlink();
     }
 
     if (this.isBlinking) {
-      this.blinkProgress += delta * 12.0; // Snappy mechanical pull-string blink
-      if (this.blinkProgress > Math.PI * 2) {
+      this.blinkProgress += delta / 0.10;
+      if (this.blinkProgress >= 1) {
         this.isBlinking = false;
         this.blinkProgress = 0;
       }
     }
 
-    // Double-pulse blink wave (chớp hai nhịp dồn dập như kéo dây)
-    const blinkAmount = this.isBlinking ? Math.max(0, Math.sin(this.blinkProgress * 2.0)) : 0;
+    // One 100 ms closing/opening gesture, with no residual red strip at rest.
+    const blinkAmount = this.isBlinking ? Math.sin(this.blinkProgress * Math.PI) : 0;
     this.eyelids.forEach(lid => {
+      lid.visible = blinkAmount > 0.01;
       lid.scale.y = Math.max(0.001, blinkAmount);
       lid.position.y = 0.08 - blinkAmount * 0.13;
     });

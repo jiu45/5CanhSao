@@ -22,6 +22,18 @@ export class LanternCraftingScene implements IScene {
   private isIgnited: boolean = false;
   private targetCamPos: THREE.Vector3;
   private targetCamLookAt: THREE.Vector3;
+  private raycaster = new THREE.Raycaster();
+  private pointer = new THREE.Vector2();
+  private readonly onPropPointerDown = (event: PointerEvent) => {
+    if (this.currentStep >= 4 || !(event.target instanceof HTMLCanvasElement)) return;
+    this.pointer.set(event.clientX / window.innerWidth * 2 - 1,
+      -(event.clientY / window.innerHeight) * 2 + 1);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const target = this.room.craftTargets[this.currentStep];
+    if (target && this.raycaster.intersectObject(target, false).length) {
+      this.craftingUI.advanceStep();
+    }
+  };
 
   constructor(
     camera: THREE.PerspectiveCamera,
@@ -44,6 +56,7 @@ export class LanternCraftingScene implements IScene {
 
     // Star lantern sitting on the wooden workbench
     this.lantern = new StarLantern();
+    this.lantern.group.scale.setScalar(0.62);
     this.lantern.group.position.set(0, 1.38, 0.1);
     this.lantern.group.rotation.x = -Math.PI * 0.04;
     this.scene.add(this.lantern.group);
@@ -59,6 +72,10 @@ export class LanternCraftingScene implements IScene {
     // Soft midnight indigo ambient (#0a1128)
     const ambient = new THREE.AmbientLight(0x1a2640, 0.78);
     this.scene.add(ambient);
+    const workLight = new THREE.SpotLight(0xffcd91, 1.45, 8, Math.PI / 3, 0.65, 1.1);
+    workLight.position.set(1.1, 3.2, 2.2);
+    workLight.target.position.set(0, 0.86, 0.1);
+    this.scene.add(workLight, workLight.target);
 
     // Window light beam spot pointing onto the workbench
     const moonbeamSpot = new THREE.SpotLight(0xaad0ff, 3.8, 16, Math.PI / 5, 0.4, 1.2);
@@ -71,16 +88,20 @@ export class LanternCraftingScene implements IScene {
     this.scene.add(moonbeamSpot);
 
     // Camera initial framing: intimate view of the rustic workbench
-    this.camera.position.set(0.0, 1.9, 2.2);
-    this.camera.lookAt(0, 1.15, 0.1);
+    const portrait = window.innerWidth / window.innerHeight < 0.8;
+    this.camera.position.set(0.0, portrait ? 2.72 : 2.15, portrait ? 5.8 : 2.65);
+    this.camera.lookAt(0, 1.07, 0.1);
     this.targetCamPos = this.camera.position.clone();
-    this.targetCamLookAt = new THREE.Vector3(0, 1.15, 0.1);
+    this.targetCamLookAt = new THREE.Vector3(0, 1.07, 0.1);
   }
 
   public init() {
+    audioManager.setScoreMood('craft');
     this.currentStep = 0;
     this.isIgnited = false;
     this.lantern.setStep(0);
+    this.room.setCraftStep(0);
+    window.addEventListener('pointerdown', this.onPropPointerDown);
 
     this.overlay.setSubtitle(StoryConfig.craftingSubtitles.step0, 4500);
 
@@ -96,6 +117,7 @@ export class LanternCraftingScene implements IScene {
   private handleStep(step: number) {
     this.currentStep = step;
     this.lantern.setStep(step);
+    this.room.setCraftStep(step);
 
     switch (step) {
       case 1:
@@ -120,12 +142,14 @@ export class LanternCraftingScene implements IScene {
 
   private onIgnited() {
     this.isIgnited = true;
+    this.craftingUI.hide();
     this.onReadyToLeave?.();
     audioManager.playCandleIgnite();
     this.overlay.setSubtitle(StoryConfig.craftingSubtitles.completed, 5000);
 
     // Camera smooth glide towards the glowing hero star lantern on the workbench
-    this.targetCamPos.set(0.0, 1.55, 1.55);
+    const portrait = window.innerWidth / window.innerHeight < 0.8;
+    this.targetCamPos.set(0.0, portrait ? 2.45 : 1.94, portrait ? 5.0 : 2.35);
     this.targetCamLookAt.set(0, 1.38, 0.1);
 
     const t = window.setTimeout(() => {
@@ -133,7 +157,7 @@ export class LanternCraftingScene implements IScene {
         this.overlay.hideNextButton();
         this.onComplete();
       });
-    }, 3800);
+    }, 5400);
     this.timerIds.push(t);
   }
 
@@ -155,6 +179,7 @@ export class LanternCraftingScene implements IScene {
     this.timerIds.forEach(id => clearTimeout(id));
     this.timerIds = [];
     this.craftingUI.hide();
+    window.removeEventListener('pointerdown', this.onPropPointerDown);
     this.overlay.clearSubtitle();
   }
 }

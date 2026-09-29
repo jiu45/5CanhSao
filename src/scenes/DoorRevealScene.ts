@@ -66,6 +66,9 @@ export class DoorRevealScene implements IScene {
 
     // Room
     this.room = new RoomDiorama();
+    // The crafting backdrop sits in front of the real doorway. Reveal the
+    // physical doors and the held lantern for this threshold shot.
+    this.room.illustratedBackdrop.visible = false;
     this.scene.add(this.room.group);
 
     // Star lantern held by player facing the door
@@ -137,10 +140,11 @@ export class DoorRevealScene implements IScene {
 
     // 2. Wide Luminous Moon Glow Halo
     const haloTex = TextureGenerator.createMoonHaloTexture();
-    const haloGeo = new THREE.PlaneGeometry(22, 22);
+    const haloGeo = new THREE.PlaneGeometry(11, 11);
     const haloMat = new THREE.MeshBasicMaterial({
       map: haloTex,
       transparent: true,
+      opacity: 0.3,
       blending: THREE.AdditiveBlending,
       depthWrite: false
     });
@@ -332,10 +336,11 @@ export class DoorRevealScene implements IScene {
 
   // Smooth cinematic camera dolly through doorway past wooden threshold
   private startThresholdWalk() {
+    audioManager.setScoreMood('village');
     this.overlay.hideNextButton();
     this.overlay.setSubtitle("Bước chân qua bậc thềm gỗ mộc, hòa mình vào đêm hội trăng rằm...", 4000);
     this.isWalkingThroughThreshold = true;
-    audioManager.playChildrenFestivalChant(0.2);
+    audioManager.playLanternParadeCall(0.08);
     audioManager.playFrogDrum(2.2);
   }
 
@@ -359,7 +364,7 @@ export class DoorRevealScene implements IScene {
       // Trigger festive children chant when doors swing wide
       if (this.doorProgress > 0.5 && !this.chantPlayed) {
         this.chantPlayed = true;
-        audioManager.playChildrenFestivalChant(0.12);
+        audioManager.playLanternParadeCall(0.06);
       }
     }
 

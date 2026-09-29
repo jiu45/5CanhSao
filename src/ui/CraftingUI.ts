@@ -24,7 +24,7 @@ export class CraftingUI {
     this.container.style.display = 'none';
 
     this.container.innerHTML = `
-      <div class="crafting-prompt-text">Chạm vào nguyên liệu để khéo léo ghép đèn</div>
+      <div class="crafting-prompt-text">Chạm vào vật đang sáng trên chiếc chiếu để làm đèn</div>
       <div class="crafting-tray"></div>
     `;
 

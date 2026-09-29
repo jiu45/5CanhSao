@@ -83,6 +83,7 @@ export class CooperativeFestivalScene implements IScene {
   private arrivalTime: number = 0;
   private arrivalStartedAt: number = 0;
   private readonly arrivalDuration: number = 1.5;
+  private companionArrivalHoldUntil = 0;
   private arrivalGlow: THREE.PointLight;
   private remoteDepartureTimer: number = 0;
   private isRemoteDeparting: boolean = false;
@@ -216,6 +217,7 @@ export class CooperativeFestivalScene implements IScene {
     // Start audio ambience
     audioManager.startModernAmbientAudio();
     audioManager.startFestivalVistaAmbience();
+    audioManager.setScoreMood('present');
     void preloadMemoryDeck().catch(error =>
       console.warn('[Phase 5] Memory photo preload:', error));
 
@@ -394,10 +396,12 @@ export class CooperativeFestivalScene implements IScene {
       this.isRemoteDeparting = false;
       this.arrivalTime = 0;
       this.arrivalStartedAt = performance.now();
+      this.companionArrivalHoldUntil = this.arrivalStartedAt + 3000;
       this.remoteLantern.group.visible = true;
       this.remoteLantern.group.scale.setScalar(0.01);
 
       audioManager.playCompanionChime();
+      audioManager.setScoreMood('together');
       this.overlay.setSubtitle('Một ngọn đèn nữa đã tìm đến bên bạn.', 4000);
       this.updateHudBadges();
       this.broadcastLocalState(1);
@@ -411,12 +415,14 @@ export class CooperativeFestivalScene implements IScene {
 
     // 3. Companion Left Callback (Graceful Celestial Departure)
     this.roomManager.onCompanionLeft = () => {
+      this.companionArrivalHoldUntil = 0;
       this.arrivalGlow.intensity = 0;
       this.remoteEndReached = false;
       this.isPointerDown = false;
       this.isKeyMoveDown = false;
       this.updateInputMovementState();
       this.startGracefulRemoteDisconnect();
+      audioManager.setScoreMood('present');
       this.overlay.setSubtitle('Bạn đồng hành đã tạm rời cung đường hội...', 3500);
       this.updateHudBadges();
     };
@@ -501,8 +507,8 @@ export class CooperativeFestivalScene implements IScene {
       if (e.code === 'KeyW' || e.code === 'ArrowUp') {
         this.isKeyMoveDown = true;
         this.updateInputMovementState();
-      } else if (e.code === 'KeyF' || e.code === 'KeyE') {
-        // Hotkey for electric switch in dark zone
+      } else if (e.code === 'KeyF') {
+        // The visible switch overlay owns KeyE so one press changes state once.
         if (this.isInDarkZone) {
           this.toggleElectricSwitch();
         }
@@ -541,7 +547,8 @@ export class CooperativeFestivalScene implements IScene {
   private updateInputMovementState(): void {
     const shouldMove = (this.isPointerDown || this.isKeyMoveDown) &&
       this.roomManager.hasCompanion &&
-      !this.roomManager.isRejected && !this.destinationReached;
+      !this.roomManager.isRejected && !this.destinationReached &&
+      performance.now() >= this.companionArrivalHoldUntil;
     if (shouldMove !== this.isMoving) {
       void this.roomManager.sendEvent(
         shouldMove ? NetworkEventType.LANTERN_PICKUP : NetworkEventType.LANTERN_RELEASE,
@@ -638,6 +645,10 @@ export class CooperativeFestivalScene implements IScene {
         void this.roomManager.sendEvent(NetworkEventType.PLAYER_READY);
         this.updateInputMovementState();
       }
+    }
+    if (this.companionArrivalHoldUntil && performance.now() >= this.companionArrivalHoldUntil) {
+      this.companionArrivalHoldUntil = 0;
+      this.updateInputMovementState();
     }
 
     // Auto-fade controls hint once walking starts or destination is reached
@@ -965,7 +976,7 @@ export class CooperativeFestivalScene implements IScene {
 
   private triggerSwitchMonologue(): void {
     this.clearSwitchMonologue();
-    this.overlay.setSubtitle('Tách! Ánh đèn pin bừng sáng, giao hòa giữa nến xưa mộc mạc và sắc màu hôm nay.', 4800);
+    this.overlay.setSubtitle('Tách. Ngọn đèn mới sáng lên cạnh ngọn nến cũ.', 4800);
     const t = window.setTimeout(() => {
       this.overlay.clearSubtitle();
     }, 4800);
@@ -1052,12 +1063,15 @@ export class CooperativeFestivalScene implements IScene {
     // Pull back for the final tableau so both lanterns and the tower fit together.
     const vistaReveal = THREE.MathUtils.smoothstep(clampedMidT, 0.72, 0.98);
     this.distantFestivalVista.setPhase5TowerFocus(vistaReveal);
+    const mobilePortrait = window.innerWidth / window.innerHeight < 0.72;
+    const localSide = this.role === 'host' ? -1 : 1;
 
     // Walking camera: 5.2m back, eye-level 1.68m.
     // Destination arrival: pulls back 10.8m, height 1.55m for low-angle heroic perspective of 17.5m tower with lanterns in frame.
     const camBackDist = THREE.MathUtils.lerp(5.2, 10.8, vistaReveal);
     const camHeight = THREE.MathUtils.lerp(1.68, 1.55, vistaReveal);
-    const camSideDist = THREE.MathUtils.lerp(0.18, 0.0, vistaReveal);
+    const camSideDist = THREE.MathUtils.lerp(0.18, 0.0, vistaReveal) +
+      (mobilePortrait ? localSide * (1 - vistaReveal) : 0);
 
     const camBack = tangent.clone().multiplyScalar(-camBackDist);
     const camSide = normal.clone().multiplyScalar(camSideDist);
@@ -1071,12 +1085,17 @@ export class CooperativeFestivalScene implements IScene {
     // Frame the carried lanterns in the lower third while keeping the gate and path ahead in view.
     const walkLookTarget = midPt.clone().add(tangent.clone().multiplyScalar(8.2));
     walkLookTarget.y = midPt.y + 1.45;
+    if (mobilePortrait) walkLookTarget.addScaledVector(normal,
+      localSide * 0.5 * (1 - vistaReveal));
 
     // At destination, look toward the illuminated mid-tier of Tháp Đèn Kéo Quân while framing both lanterns clearly
     const towerLookTarget = new THREE.Vector3(100.0, 5.6, -25.6);
     const lookTarget = walkLookTarget.clone().lerp(towerLookTarget, vistaReveal);
 
-    const targetFov = THREE.MathUtils.lerp(this.originalCameraFov, 64, vistaReveal);
+    const authoredFov = THREE.MathUtils.lerp(this.originalCameraFov, 64, vistaReveal);
+    // A portrait viewport otherwise crops the carried lantern outside the
+    // frame, leaving the invitation text with no matching light in the world.
+    const targetFov = mobilePortrait ? Math.max(66, authoredFov) : authoredFov;
     if (Math.abs(this.camera.fov - targetFov) > 0.01) {
       this.camera.fov = targetFov;
       this.camera.updateProjectionMatrix();
@@ -1104,7 +1123,7 @@ export class CooperativeFestivalScene implements IScene {
     styleEl.textContent = `
       .coop-hud-container {
         position: fixed;
-        top: 20px;
+        top: 78px;
         right: 24px;
         display: flex;
         flex-direction: column;
@@ -1119,14 +1138,17 @@ export class CooperativeFestivalScene implements IScene {
         border-radius: 16px;
         padding: 10px 18px;
         color: #fffaf0;
-        font-family: 'Quicksand', sans-serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
         backdrop-filter: blur(10px);
         pointer-events: auto;
+        width: min(380px, calc(100vw - 48px));
+        box-sizing: border-box;
       }
       .coop-room-row {
         display: flex;
         align-items: center;
+        flex-wrap: wrap;
         gap: 10px;
         font-size: 0.92rem;
       }
@@ -1160,6 +1182,18 @@ export class CooperativeFestivalScene implements IScene {
         color: #fffaf0;
       }
       .coop-invite-input.visible { display: block; }
+      .coop-wait-art {
+        display: block;
+        width: 100%;
+        height: 84px;
+        margin: 8px 0 5px;
+        border-radius: 10px;
+        background: #0b1930;
+      }
+      .coop-wait-art .second-light { opacity: .14; transition: opacity 1.5s ease; }
+      .coop-wait-art .light-path { opacity: .25; transition: opacity 1.5s ease; }
+      .coop-badge-card.connected .coop-wait-art .second-light,
+      .coop-badge-card.connected .coop-wait-art .light-path { opacity: 1; }
       .coop-controls-hint {
         position: fixed;
         bottom: 24px;
@@ -1170,7 +1204,7 @@ export class CooperativeFestivalScene implements IScene {
         border-radius: 20px;
         padding: 6px 18px;
         color: #e2e8f0;
-        font-family: 'Quicksand', sans-serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 0.85rem;
         pointer-events: none;
         z-index: 10000;
@@ -1185,10 +1219,21 @@ export class CooperativeFestivalScene implements IScene {
     this.hudContainerEl.innerHTML = `
       <div class="coop-badge-card">
         <div class="coop-room-row" id="coop-invite-actions">
-          <span>🏮 Một chiếc đèn đang chờ chiếc thứ hai</span>
+          <span>🏮 Một khoảng trống bên cạnh ánh đèn</span>
           <button class="coop-btn-copy coop-btn-share">Mời người cùng rước đèn</button>
           <button class="coop-btn-copy room-invite-link" data-testid="room-invite-link">Sao chép liên kết</button>
         </div>
+        <svg class="coop-wait-art" viewBox="0 0 360 84" role="img" aria-label="Một chiếc đèn đang chờ chiếc thứ hai">
+          <defs><radialGradient id="coop-moon-glow"><stop stop-color="#e8e9e5" stop-opacity=".38"/><stop offset="1" stop-color="#e8e9e5" stop-opacity="0"/></radialGradient></defs>
+          <rect width="360" height="84" fill="#0b1930"/>
+          <path d="M0 70 Q90 39 180 69 T360 67 V84 H0Z" fill="#172f48"/>
+          <circle cx="180" cy="21" r="29" fill="url(#coop-moon-glow)"/><circle cx="180" cy="21" r="10" fill="#e9e7d8"/>
+          <path class="light-path" d="M103 63 Q180 37 257 63" fill="none" stroke="#f9c56d" stroke-width="2" stroke-dasharray="4 7"/>
+          <path d="M103 28 L110 48 L132 48 L114 60 L121 79 L103 67 L85 79 L92 60 L74 48 L96 48Z" fill="#f5a642" stroke="#ffdf88" stroke-width="2"/>
+          <circle cx="103" cy="55" r="20" fill="#ffca6a" opacity=".16"/>
+          <g class="second-light"><path d="M257 28 L264 48 L286 48 L268 60 L275 79 L257 67 L239 79 L246 60 L228 48 L250 48Z" fill="#f8bd67" stroke="#fff2b0" stroke-width="2"/>
+          <circle cx="257" cy="55" r="20" fill="#ffca6a" opacity=".16"/></g>
+        </svg>
         <input class="coop-invite-input" aria-label="Liên kết mời" readonly>
         <div class="coop-status-text" id="coop-presence-status">Đang chờ một ngọn đèn khác...</div>
       </div>
@@ -1235,6 +1280,7 @@ export class CooperativeFestivalScene implements IScene {
   private updateHudBadges(): void {
     if (!this.hudContainerEl) return;
     const statusEl = this.hudContainerEl.querySelector('#coop-presence-status');
+    this.hudContainerEl.querySelector('.coop-badge-card')?.classList.toggle('connected', this.remoteLanternVisible);
     const actionsEl = this.hudContainerEl.querySelector<HTMLElement>('#coop-invite-actions');
     if (actionsEl) actionsEl.style.display = this.isGuest || this.remoteLanternVisible ? 'none' : 'flex';
     if (this.inviteInputEl && this.remoteLanternVisible) this.inviteInputEl.classList.remove('visible');

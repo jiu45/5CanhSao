@@ -15,7 +15,6 @@ export interface StoryConfigType {
   doorRevealSubtitles: string[];
   villageWalk: {
     arrivalHint: string;
-    movementInstruction: string;
     candleWarning: string;
     windGustWarning: string;
     vignetteFamily: string;
@@ -68,68 +67,67 @@ export const StoryConfig: StoryConfigType = {
   playerB: "Em",
   yearPast: "Cuối Thế Kỷ 20",
   locationPast: "Làng Quê Bắc Bộ",
-  cinematicPeriodTitle: "Làng quê Bắc Bộ — Một mùa trăng cuối thế kỷ 20...",
+  cinematicPeriodTitle: "Một vầng trăng mở lối về miền ký ức...",
   openingSubtitles: [
-    "Thời gian chầm chậm quay ngược qua từng vòng tích tắc...",
-    "Về một mùa trăng rằm cuối thế kỷ 20 đơn sơ mà đẹp đến lạ thường,",
-    "Nơi ánh trăng và ngọn nến là thứ soi sáng cả bầu trời tuổi thơ."
+    "Vẫn là vầng trăng ấy, dù bao mùa đã đi qua...",
+    "Nghe không? Tiếng trống ếch đang vọng về từ một con ngõ cũ.",
+    "Một chiếc đèn nhỏ đã chờ ai đó thắp sáng đêm rằm."
   ],
   craftingSubtitles: {
-    step0: "Trên chiếc chiếu cói bên vệt trăng xiên, 10 thanh nan tre, cuộn kẽm và bát hồ dán cơm nguội đã sẵn sàng...",
-    step1: "Uốn ghép 10 thanh nan tre thành khung ngôi sao năm cánh kép thật đều và khéo léo...",
-    step2: "Cột chặt các đầu cánh bằng dây kẽm mảnh, nẹp vòng tre tròn giữ căng bụng đèn...",
-    step3: "Dán từng mảnh giấy kiếng đỏ cam viền vàng, bọc kín lớp áo trong suốt đón ánh trăng...",
-    completed: "Ngọn nến bên trong tự động bừng sáng! Ánh lửa vàng cam hắt bóng ngôi sao lên khắp vách tường đất."
+    step0: "Trên chiếc chiếu cói, chiếc đèn đầu tiên bắt đầu từ vài thanh nan tre.",
+    step1: "Những thanh nan tre khép lại thành khung sao năm cánh.",
+    step2: "Giấy kiếng đỏ cam phủ lên khung tre. Vệt trăng xuyên qua lớp giấy mỏng...",
+    step3: "Dây kẽm giữ chặt những đầu cánh; cán tre đã sẵn sàng để mang ngôi sao ra ngoài.",
+    completed: "Từ vài thanh nan tre, bạn đã có một ngọn đèn để mang ra đêm hội."
   },
   doorRevealSubtitles: [
-    "Cầm chiếc đèn ông sao ấm áp, đẩy nhẹ cánh cửa gỗ bước ra sân đình...",
+    "Cầm chiếc đèn ông sao, đẩy nhẹ cánh cửa gỗ bước ra con ngõ làng...",
     "Ngoài kia, cả làng quê đang rộn rã tiếng cười đùa và tiếng trống ếch rước đèn."
   ],
   villageWalk: {
-    arrivalHint: "Lễ hội đang ở ngay phía trước rồi, nhanh nhanh tới đó nào!",
-    movementInstruction: "Nhấn hoặc giữ [S] / [W] (hoặc chạm giữ màn hình) để cất bước chạy tới đêm hội...",
+    arrivalHint: "Tiếng trống hội vọng đến từ cuối con đường tre. Cứ theo ánh đèn mà bước.",
     candleWarning: "Gió thu đang thổi nhè nhẹ, chớ chạy quá vội kẻo nến chao nghiêng nhé...",
-    windGustWarning: "Gió thu thổi ào qua rặng tre! Giữ [Space] hoặc chạm [Che nến] để bảo vệ ngọn lửa!",
-    vignetteFamily: "Bên hiên nhà, chén trà sen thơm ngát và đĩa bánh dẻo còn nguyên vẹn dưới ánh trăng...",
-    vignetteKids: "Kìa, lũ trẻ xóm trên đang reo hò rước đèn cá chép chạy vụt tới sân đình kìa!",
-    vignetteFeast: "Mâm cỗ trông trăng đủ đầy quả ngọt, tiếng trống ếch giòn tan giục giã từng nhịp bước...",
-    vignetteTempleGate: "Cổng đình làng đã hiện ra rực rỡ cờ hoa! Tiếng trống lân rộn rã đón chào..."
+    windGustWarning: "Gió thốc qua rặng tre. Ánh nến chao nghiêng trong tay bạn!",
+    vignetteFamily: "Bên hiên nhà, hơi trà sen quyện trong tiếng chuyện trò.",
+    vignetteKids: "Đám trẻ chạy ngang với đèn cá chép; tiếng cười lẫn trong tiếng trống.",
+    vignetteFeast: "Một mâm cỗ trông trăng chờ cả nhà bên đường làng.",
+    vignetteTempleGate: "Cổng đình đã hiện ra. Tiếng trống lân mỗi lúc một gần."
   },
   festivalSquare: {
-    revealGateEntry: "Đến trước sân đình rợp cờ hoa, ánh trăng vằng vặc soi sáng sân gạch thênh thang và tiếng trống lân rộn rã...",
-    revealCrowdGathering: "Lũ trẻ quây quần thành vòng tròn hò reo, từng chiếc đèn ông sao, đèn lon sữa bò lấp lánh như ngàn vì tinh tú.",
-    revealLionPeeking: "Phía sau đám đông, nhịp trống dồn dập vút lên... Thoáng thấy đầu lân đỏ rực chớp mắt tung bờm!",
-    revealLionFullDance: "Chiếc đèn ông sao của bạn tỏa sáng ấm áp nhất giữa vòng tay bè bạn, ngắm con lân múa lượn rực rỡ...",
+    revealGateEntry: "Qua cổng đình, sân gạch mở ra dưới trăng.",
+    revealCrowdGathering: "Đèn ông sao và đèn lon sữa bò nhấp nhô trên đầu lũ trẻ.",
+    revealLionPeeking: "Từ sau vòng người, chiếc đầu lân đỏ chợt ló ra.",
+    revealLionFullDance: "Con lân nhào qua nhịp trống. Ánh đèn bạn hòa vào vòng sáng dưới sân đình.",
     actionJoinPerformance: "Chăm chú dõi theo từng nhịp múa lân 🦁",
-    transitionToLion: "Khoảnh khắc ánh mắt chạm nhau... Choáng váng trong giây lát, linh hồn như hòa vào nhịp đập rạo rực của đầu lân!",
+    transitionToLion: "Tiếng trống đưa ký ức đến thật gần... thử hòa mình vào một nhịp múa lân nào!",
     lionPovIntro: "Mở mắt ra giữa tiếng reo hò rộn rã! Hãy vung đầu lân theo từng nhịp trống giòn tan...",
     gesturePrompt1: "Điệu 1: Lắc đầu sang phải — Vẫy bờm nghênh đón bạn bè",
     gesturePrompt2: "Điệu 2: Nghiêng đầu sang trái — Chớp mắt đùa vui dưới trăng",
     gesturePrompt3: "Điệu 3: Chồm lân vút lên — Tung bay rực rỡ chúc phúc đêm rằm",
     transitionToSpectator: "Tiếng reo hò vỡ òa... Con lân cúi đầu chào, bạn nhẹ nhàng bừng tỉnh bên vầng sáng quen thuộc.",
-    spectatorPayoff: "Chiếc đèn ông sao trên tay bạn vẫn ấm áp lung linh, rực rỡ nhất giữa vòng tay bè bạn đêm rằm.",
+    spectatorPayoff: "Ngọn nến trong tay bạn vẫn ấm giữa sân đình.",
     actionCompleteIterationB: "Hoàn thành điệu múa lân 🦁",
     actionStartMemoryAscent: "Hòa vào vầng trăng ký ức 🌕",
-    ascentStage1: "Bạn đứng giữa vòng tay bè bạn, ngắm nhìn con lân cúi đầu tạ ơn dưới ánh trăng.",
-    ascentStage1Lantern: "Chiếc đèn ông sao bạn tự tay làm... giờ đã là một phần ấm áp của cả đêm hội.",
-    ascentStage2Village: "Tiếng trống lân rộn rã, tiếng cười bạn bè... dần dần hòa vào từng ngọn gió đêm quê nhà.",
-    ascentStage3Constellation: "Lễ hội từng lớn lao biết bao trong mắt đứa trẻ... giờ chỉ còn là một đốm sáng nhỏ bé, ấm áp giữa đất trời bao la.",
-    ascentStage4Moon: "Vầng trăng năm ấy vẫn sáng vẹn nguyên như thế. Ký ức tuổi thơ... chưa bao giờ phai nhạt."
+    ascentStage1: "Tiếng trống vẫn rung dưới chân bạn.",
+    ascentStage1Lantern: "Ngôi sao bạn tự tay làm hòa vào đoàn đèn dưới sân đình.",
+    ascentStage2Village: "Mái đình và những tiếng cười lùi dần trong gió.",
+    ascentStage3Constellation: "Từ trên cao, đêm hội chỉ còn là những chấm sáng nhỏ.",
+    ascentStage4Moon: "Ngọn đèn dưới sân đình nhỏ dần; vầng trăng lớn lên trước mắt bạn."
   },
   modernArrival: {
-    moonTransition1: "Nhiều năm tháng đã trôi qua... Dưới cùng một vầng trăng...",
-    lanternEvolve: "Chiếc đèn năm xưa vẫn ở đây, thắp sáng theo một cách mới lung linh hơn.",
-    parkDescent: "Bầu trời mở rộng... Những con đường rực rỡ sắc màu của thời hiện đại dần hiện ra.",
-    elevatedViewpoint: "Đứng từ triền đồi công viên lộng gió, ngắm nhìn tác phẩm Mặt Trăng lung linh giữa bóng đêm tĩnh lặng...",
-    soundCueArrival: "Bỗng từ phía bên kia triền đồi, tiếng trống lân rộn rã và tiếng cười hò reo vọng lại...",
+    moonTransition1: "Nhiều năm trôi qua. Vầng trăng vẫn ở đó.",
+    lanternEvolve: "Trên lối đá, một ánh đèn mới đang sáng lên.",
+    parkDescent: "Triền cỏ, lối đá và những ngọn đèn điện dần hiện ra dưới chân bạn.",
+    elevatedViewpoint: "Trên triền đồi, tác phẩm Mặt Trăng sáng giữa công viên vắng.",
+    soundCueArrival: "Từ bên kia đồi, một nhịp trống lân vọng tới.",
     actionTurnToFestival: "Hướng về phía đêm hội rực rỡ 🏮",
-    festivalVistaReveal: "Quay sang phía tiếng nhạc... Tháp Đèn Kéo Quân khổng lồ xoay chuyển rực rỡ giữa lòng đại quảng trường!",
-    festivalVistaAnticipation: "Bóng lân rước đèn xoay vần lung linh, tiếng trống hội giục giã... Đêm hội Trung Thu rực rỡ đang chờ đón.",
-    actionEnterPark: "Khám phá đại quảng trường 🏮",
-    pivotToGrandSquare: "Từ phía bên kia triền đồi, tiếng nhạc rộn rã và ánh sáng đêm hội bừng lên gọi mời...",
-    approachingFestival: "Cùng bước xuống đại lộ công viên... Lễ hội đang ngày một gần hơn.",
-    midApproach: "Dọc theo con đường rực rỡ, dòng người nô nức cùng những chiếc đèn lung linh hướng về cổng hội.",
-    nearFestivalHandoff: "Đêm hội đã ở ngay trước mắt... Ánh sáng rực rỡ và tiếng trống lân đón chào.",
+    festivalVistaReveal: "Tháp Đèn Kéo Quân xoay chậm giữa khu hội ngoài.",
+    festivalVistaAnticipation: "Những hình lân quay theo ánh đèn. Tiếng hội đã gần hơn.",
+    actionEnterPark: "Theo lối đèn vào khu hội 🏮",
+    pivotToGrandSquare: "Nhịp trống dẫn bạn về phía những dải đèn trên cao.",
+    approachingFestival: "Con đường lát đá dẫn xuống khu hội.",
+    midApproach: "Người và đèn cùng đổ về cổng hội.",
+    nearFestivalHandoff: "Dưới vòm cổng, ánh đèn rước hội đã ở rất gần.",
     actionEnterFestival: "Bước vào đêm hội 🏮"
   },
   finalLetter: "Dù Trung Thu này hai đứa mình ở cách xa nhau, nhưng ngọn nến trong chiếc đèn ông sao này sẽ luôn sưởi ấm và soi sáng dẫn lối cho chúng mình cùng nhau."

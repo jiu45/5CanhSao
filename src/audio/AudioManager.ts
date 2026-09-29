@@ -1,3 +1,6 @@
+import { FestivalScore, type ScoreMood } from './FestivalScore';
+import { RecordedMusic } from './RecordedMusic';
+
 /**
  * Procedural Audio Engine for Mid-Autumn Storybook
  * Uses Web Audio API to create authentic atmospheric sounds without external asset dependencies.
@@ -5,10 +8,27 @@
 export class AudioManager {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
-  private cricketNode: AudioNode | null = null;
-  private windNode: AudioNode | null = null;
-  private flameNode: AudioNode | null = null;
-  private musicInterval: number | null = null;
+  private cricketSource: OscillatorNode | null = null;
+  private cricketInterval: number | null = null;
+  private windSource: AudioBufferSourceNode | null = null;
+  private windGain: GainNode | null = null;
+  private flameSource: OscillatorNode | null = null;
+  private ascentWindSource: AudioBufferSourceNode | null = null;
+  private score: FestivalScore | null = null;
+  private recordedMusic: RecordedMusic | null = null;
+  private recordedMusicPlaying = false;
+  private scoreForcedPaused = false;
+  private readonly unlockOnGesture = () => {
+    if (!this.ctx || this.isMuted) return;
+    if (this.ctx.state === 'running') {
+      this.removeUnlockListeners();
+      return;
+    }
+    void this.ctx.resume().then(() => {
+      this.score?.pulse();
+      this.removeUnlockListeners();
+    }).catch(() => {});
+  };
 
   constructor() {
     // AudioContext will be initialized on first user interaction
@@ -18,14 +38,68 @@ export class AudioManager {
     if (this.ctx) return;
     const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     this.ctx = new AudioCtx();
+    this.score = new FestivalScore(this.ctx);
+    this.recordedMusic = new RecordedMusic(playing => {
+      this.recordedMusicPlaying = playing;
+      this.updateScorePause();
+    });
+    window.addEventListener('pointerdown', this.unlockOnGesture, { passive: true });
+    window.addEventListener('keydown', this.unlockOnGesture, { passive: true });
+    if (this.isMuted) {
+      this.updateScorePause();
+      this.recordedMusic.setMuted(true);
+      void this.ctx.suspend().catch(() => {});
+    }
   }
+
+  private removeUnlockListeners(): void {
+    window.removeEventListener('pointerdown', this.unlockOnGesture);
+    window.removeEventListener('keydown', this.unlockOnGesture);
+  }
+
+  public setMuted(muted: boolean): void {
+    this.isMuted = muted;
+    if (!this.ctx) return;
+    this.recordedMusic?.setMuted(muted);
+    this.updateScorePause();
+    if (muted) void this.ctx.suspend().catch(() => {});
+    else void this.ctx.resume().then(() => {
+      this.score?.pulse();
+      this.removeUnlockListeners();
+    }).catch(() => {});
+  }
+
+  public get muted(): boolean { return this.isMuted; }
+
+  public setScoreMood(mood: ScoreMood): void {
+    if (!this.ctx) this.init();
+    this.score?.setMood(mood);
+    this.recordedMusic?.setMood(mood);
+    this.updateScorePause();
+  }
+
+  private updateScorePause(): void {
+    this.score?.setPaused(this.isMuted || this.scoreForcedPaused || this.recordedMusicPlaying);
+  }
+
+  public pauseScore(paused: boolean): void {
+    this.scoreForcedPaused = paused;
+    this.recordedMusic?.setPaused(paused);
+    this.updateScorePause();
+  }
+  public stopScore(): void {
+    this.recordedMusic?.stop();
+    this.score?.stop();
+    this.scoreForcedPaused = false;
+  }
+  public get scoreMood(): ScoreMood | null { return this.score?.currentMood ?? null; }
 
   // Realistic mechanical clock ticking that rapidly spins then decelerates
   public playClockRewind(onComplete?: () => void) {
     if (!this.ctx) this.init();
     if (!this.ctx || this.isMuted) return;
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      void this.ctx.resume().then(() => this.score?.pulse()).catch(() => {});
     }
 
     const now = this.ctx.currentTime;
@@ -39,20 +113,20 @@ export class AudioManager {
         tickCount++;
         const isTick = tickCount % 2 === 0;
 
-        // Mechanical wooden/metallic escapement click
+        // Low wooden ticks drift away as the paper memory comes into view.
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         const filter = this.ctx.createBiquadFilter();
 
         osc.type = isTick ? 'triangle' : 'sine';
-        osc.frequency.setValueAtTime(isTick ? 1400 : 1800, t);
-        osc.frequency.exponentialRampToValueAtTime(300, t + 0.025);
+        osc.frequency.setValueAtTime(isTick ? 760 : 920, t);
+        osc.frequency.exponentialRampToValueAtTime(240, t + 0.025);
 
         filter.type = 'bandpass';
-        filter.frequency.value = isTick ? 1200 : 1600;
+        filter.frequency.value = isTick ? 820 : 980;
         filter.Q.value = 4.0;
 
-        gain.gain.setValueAtTime(0.2, t);
+        gain.gain.setValueAtTime(0.065, t);
         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.025);
 
         osc.connect(filter);
@@ -80,6 +154,7 @@ export class AudioManager {
 
   public startNightAmbience() {
     if (!this.ctx || this.isMuted) return;
+    this.stopNightAmbience();
     if (this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
@@ -108,7 +183,8 @@ export class AudioManager {
     windFilter.connect(windGain);
     windGain.connect(this.ctx.destination);
     whiteNoise.start();
-    this.windNode = windGain;
+    this.windSource = whiteNoise;
+    this.windGain = windGain;
 
     // 2. Distant crickets ambient pulse
     this.startCrickets();
@@ -138,7 +214,7 @@ export class AudioManager {
 
     // Modulate gain to sound like real summer/autumn crickets
     let tick = 0;
-    const interval = window.setInterval(() => {
+    this.cricketInterval = window.setInterval(() => {
       if (!this.ctx || this.isMuted) return;
       tick++;
       const now = this.ctx.currentTime;
@@ -150,7 +226,21 @@ export class AudioManager {
       }
     }, 120);
 
-    this.cricketNode = cricketGain;
+    this.cricketSource = cricketOsc;
+  }
+
+  public stopNightAmbience(): void {
+    if (this.cricketInterval !== null) window.clearInterval(this.cricketInterval);
+    this.cricketInterval = null;
+    this.cricketSource?.stop();
+    this.cricketSource = null;
+    if (this.windSource && this.ctx) {
+      this.windGain?.gain.setTargetAtTime(0.0001, this.ctx.currentTime, .15);
+      const source = this.windSource;
+      source.stop(this.ctx.currentTime + .8);
+    }
+    this.windSource = null;
+    this.windGain = null;
   }
 
   // Play bamboo wood tap when snapping bamboo frame
@@ -258,8 +348,8 @@ export class AudioManager {
     strikeGain.connect(this.ctx.destination);
     strike.start(now);
 
-    // 2. Warm musical harmonic chord (Ghibli nostalgic chime)
-    const chords = [523.25, 659.25, 783.99, 1046.50]; // C - E - G - C
+    // 2. Four quiet notes of the game's own lantern motif.
+    const chords = [293.66, 440, 523.25, 587.33];
     chords.forEach((freq, idx) => {
       const osc = this.ctx!.createOscillator();
       const g = this.ctx!.createGain();
@@ -267,7 +357,7 @@ export class AudioManager {
       osc.frequency.setValueAtTime(freq, now + 0.1 + idx * 0.05);
 
       g.gain.setValueAtTime(0.001, now + 0.1 + idx * 0.05);
-      g.gain.exponentialRampToValueAtTime(0.08, now + 0.2 + idx * 0.05);
+      g.gain.exponentialRampToValueAtTime(0.045, now + 0.2 + idx * 0.05);
       g.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
 
       osc.connect(g);
@@ -282,6 +372,7 @@ export class AudioManager {
 
   private startFlameDrone() {
     if (!this.ctx) return;
+    if (this.flameSource) return;
     const osc = this.ctx.createOscillator();
     const filter = this.ctx.createBiquadFilter();
     const gain = this.ctx.createGain();
@@ -298,7 +389,19 @@ export class AudioManager {
     filter.connect(gain);
     gain.connect(this.ctx.destination);
     osc.start();
-    this.flameNode = gain;
+    this.flameSource = osc;
+  }
+
+  public stopPastAmbience(): void {
+    this.stopNightAmbience();
+    this.flameSource?.stop();
+    this.flameSource = null;
+    if (this.ascentWindSource && this.ctx) {
+      this.ascentWindGain?.gain.setTargetAtTime(.0001, this.ctx.currentTime, .2);
+      this.ascentWindSource.stop(this.ctx.currentTime + 1);
+    }
+    this.ascentWindSource = null;
+    this.ascentWindGain = null;
   }
 
   // Wooden door creak when opening into village
@@ -376,22 +479,16 @@ export class AudioManager {
     osc3.stop(now + 0.5);
   }
 
-  // Children festival chant & cheerful Mid-Autumn melody ("Tùng rinh rinh... rước đèn đón trăng")
-  public playChildrenFestivalChant(volume: number = 0.12) {
+  // Original short flute-like call for the approaching lantern procession.
+  public playLanternParadeCall(volume: number = 0.12) {
     if (!this.ctx || this.isMuted) return;
     const now = this.ctx.currentTime;
 
-    // Traditional Pentatonic Mid-Autumn Motif: G4 - A4 - C5 - D5 - E5 - G5
-    // "Tùng rinh rinh, tùng tùng tùng rinh rinh"
     const motif = [
-      { f: 523.25, time: 0.0, dur: 0.18, type: 'triangle' }, // C5 (Tùng)
-      { f: 659.25, time: 0.22, dur: 0.15, type: 'sine' },     // E5 (rinh)
-      { f: 783.99, time: 0.40, dur: 0.22, type: 'sine' },     // G5 (rinh)
-      { f: 523.25, time: 0.70, dur: 0.16, type: 'triangle' }, // C5 (tùng)
-      { f: 587.33, time: 0.90, dur: 0.16, type: 'triangle' }, // D5 (tùng)
-      { f: 523.25, time: 1.10, dur: 0.25, type: 'triangle' }, // C5 (tùng)
-      { f: 659.25, time: 1.40, dur: 0.18, type: 'sine' },     // E5 (rinh)
-      { f: 783.99, time: 1.62, dur: 0.35, type: 'sine' }      // G5 (rinh)
+      { f: 587.33, time: 0.0, dur: 0.36, type: 'triangle' },
+      { f: 440.00, time: 0.47, dur: 0.31, type: 'sine' },
+      { f: 523.25, time: 1.02, dur: 0.38, type: 'triangle' },
+      { f: 392.00, time: 1.58, dur: 0.62, type: 'sine' }
     ];
 
     motif.forEach(note => {
@@ -860,6 +957,7 @@ export class AudioManager {
 
   public startMemoryAscentAudio() {
     if (!this.ctx || this.isMuted) return;
+    if (this.ascentWindSource) return;
     if (this.ctx.state === 'suspended') {
       this.ctx.resume();
     }
@@ -891,6 +989,7 @@ export class AudioManager {
     whiteNoise.start();
 
     this.ascentWindGain = windGain;
+    this.ascentWindSource = whiteNoise;
   }
 
   // Play nostalgic melodic phrase during each stage of the camera ascent
@@ -1010,6 +1109,7 @@ export class AudioManager {
   // 21. PHASE 4: MODERN PRESENT ERA AMBIENCE & FESTIVAL MOTIF
   // ===========================================================================
   private modernParkGain: GainNode | null = null;
+  private modernParkSource: AudioBufferSourceNode | null = null;
   private modernDrumInterval: number | null = null;
   private modernFocus = 1;
 
@@ -1054,6 +1154,7 @@ export class AudioManager {
     whiteNoise.start();
 
     this.modernParkGain = parkGain;
+    this.modernParkSource = whiteNoise;
 
     // 2. Distant festival lion drum beat occurring every 3.5s
     this.modernDrumInterval = window.setInterval(() => {
@@ -1228,6 +1329,7 @@ export class AudioManager {
   private vistaFilterNode: BiquadFilterNode | null = null;
   private currentVistaPan: number = 0.8;
   private currentVistaVolume: number = 0.7;
+  private vistaCycle = 0;
 
   public startFestivalVistaAmbience() {
     if (!this.ctx || this.isMuted) return;
@@ -1259,36 +1361,35 @@ export class AudioManager {
       const now = this.ctx.currentTime;
       const dest = this.vistaMasterGain;
 
-      // 1. Celebratory Lion Dance syncopation drums
-      const drumTimes = [0.0, 0.18, 0.36, 0.65, 0.85];
-      drumTimes.forEach(dt => {
+      // Leave air between distant drum strokes. The close lion-dance scene
+      // owns its own percussion; this layer is the procession beyond the hill.
+      const beatTimes = this.vistaCycle++ % 2 === 0 ? [0, 0.62, 2.18] : [0, 0.78];
+      beatTimes.forEach((dt, index) => {
         const osc = this.ctx!.createOscillator();
         const g = this.ctx!.createGain();
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(140, now + dt);
-        osc.frequency.exponentialRampToValueAtTime(45, now + dt + 0.15);
-        g.gain.setValueAtTime(0.18, now + dt);
-        g.gain.exponentialRampToValueAtTime(0.001, now + dt + 0.17);
+        osc.frequency.setValueAtTime(index === 0 ? 128 : 104, now + dt);
+        osc.frequency.exponentialRampToValueAtTime(52, now + dt + 0.19);
+        g.gain.setValueAtTime(index === 0 ? 0.115 : 0.067, now + dt);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dt + 0.24);
         osc.connect(g);
         g.connect(dest);
         osc.start(now + dt);
-        osc.stop(now + dt + 0.19);
+        osc.stop(now + dt + 0.25);
       });
 
-      // 2. Playful bell chimes
-      const bellFreqs = [783.99, 880.0, 1046.5, 1174.66];
-      bellFreqs.forEach((bf, idx) => {
-        const bOsc = this.ctx!.createOscillator();
-        const bG = this.ctx!.createGain();
-        bOsc.type = 'triangle';
-        bOsc.frequency.setValueAtTime(bf, now + 1.0 + idx * 0.14);
-        bG.gain.setValueAtTime(0.001, now + 1.0 + idx * 0.14);
-        bG.gain.linearRampToValueAtTime(0.08, now + 1.0 + idx * 0.14 + 0.03);
-        bG.gain.exponentialRampToValueAtTime(0.001, now + 1.0 + idx * 0.14 + 0.5);
-        bOsc.connect(bG);
-        bG.connect(dest);
-        bOsc.start(now + 1.0 + idx * 0.14);
-        bOsc.stop(now + 1.0 + idx * 0.14 + 0.55);
+      // A quiet wooden answer reads more like a procession than an arcade
+      // arpeggio and leaves the lantern leitmotif free to carry the melody.
+      [0.3, 1.13].forEach(dt => {
+        const wood = this.ctx!.createOscillator();
+        const g = this.ctx!.createGain();
+        wood.type = 'triangle';
+        wood.frequency.setValueAtTime(580, now + dt);
+        wood.frequency.exponentialRampToValueAtTime(220, now + dt + 0.035);
+        g.gain.setValueAtTime(0.024, now + dt);
+        g.gain.exponentialRampToValueAtTime(0.001, now + dt + 0.055);
+        wood.connect(g); g.connect(dest);
+        wood.start(now + dt); wood.stop(now + dt + 0.06);
       });
     };
 
@@ -1407,6 +1508,10 @@ export class AudioManager {
     if (this.modernParkGain && this.ctx) {
       this.modernParkGain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 1.5);
       this.modernParkGain = null;
+    }
+    if (this.modernParkSource && this.ctx) {
+      this.modernParkSource.stop(this.ctx.currentTime + 1.6);
+      this.modernParkSource = null;
     }
     if (this.modernDrumInterval !== null) {
       clearInterval(this.modernDrumInterval);

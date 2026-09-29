@@ -6,6 +6,14 @@ export class RoomDiorama {
   public tableGroup: THREE.Group;
   public doorLeft: THREE.Group;
   public doorRight: THREE.Group;
+  public illustratedBackdrop!: THREE.Mesh;
+  public craftTargets: THREE.Mesh[] = [];
+  private craftHalos: THREE.Mesh[] = [];
+  private craftMaterials: THREE.Object3D[][] = [[], [], [], []];
+  private craftOrigins: { object: THREE.Object3D; position: THREE.Vector3; scale: THREE.Vector3 }[] = [];
+  private craftFlights: { object: THREE.Object3D; position: THREE.Vector3; scale: THREE.Vector3; elapsed: number }[] = [];
+  private readonly craftArrival = new THREE.Vector3(0, 1.32, 0.1);
+  private readonly dustDummy = new THREE.Object3D();
   public dustParticles!: THREE.InstancedMesh;
   private particleCount: number = 90;
   private particlePositions: THREE.Vector3[] = [];
@@ -45,8 +53,10 @@ export class RoomDiorama {
     });
 
     this.buildRoomShell();
+    this.buildIllustratedWall();
     this.buildWindow();
     this.buildWoodenWorkbench();
+    this.buildCraftTargets();
     this.buildWoodenDoors();
     this.buildProps();
     this.buildDustMotes();
@@ -103,6 +113,55 @@ export class RoomDiorama {
     }
   }
 
+  private buildIllustratedWall(): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 640;
+    const ctx = canvas.getContext('2d')!;
+    const wall = ctx.createLinearGradient(0, 0, 0, 640);
+    wall.addColorStop(0, '#152941'); wall.addColorStop(1, '#29344a');
+    ctx.fillStyle = wall; ctx.fillRect(0, 0, 1024, 640);
+    ctx.fillStyle = '#493a37';
+    ctx.fillRect(0, 0, 1024, 35); ctx.fillRect(0, 560, 1024, 34);
+    for (let x = 45; x < 1024; x += 110) {
+      ctx.fillStyle = 'rgba(123,92,67,.24)'; ctx.fillRect(x, 0, 8, 640);
+    }
+    // A paper-cut window keeps the same moon visible from the opening pages.
+    ctx.fillStyle = '#493b35'; ctx.fillRect(90, 90, 410, 360);
+    ctx.fillStyle = '#294761'; ctx.fillRect(112, 110, 366, 315);
+    ctx.fillStyle = '#dce6df'; ctx.beginPath(); ctx.arc(294, 230, 65, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(239,236,205,.13)';
+    ctx.beginPath(); ctx.moveTo(112, 425); ctx.lineTo(502, 425);
+    ctx.lineTo(790, 640); ctx.lineTo(214, 640); ctx.fill();
+    ctx.strokeStyle = '#584438'; ctx.lineWidth = 18;
+    ctx.beginPath(); ctx.moveTo(294, 100); ctx.lineTo(294, 433);
+    ctx.moveTo(104, 270); ctx.lineTo(486, 270); ctx.stroke();
+    ctx.strokeStyle = '#122b3c'; ctx.lineWidth = 8;
+    for (let x = 125; x < 485; x += 70) {
+      ctx.beginPath(); ctx.moveTo(x, 435); ctx.quadraticCurveTo(x - 26, 280, x + 15, 112); ctx.stroke();
+    }
+    ctx.fillStyle = '#162d3b';
+    for (let x = 154; x < 475; x += 88) {
+      ctx.beginPath(); ctx.moveTo(x, 325); ctx.lineTo(x - 45, 305);
+      ctx.lineTo(x - 4, 345); ctx.fill();
+    }
+    // Small ceramic vessels and a woven shelf provide human scale.
+    ctx.fillStyle = '#745847'; ctx.fillRect(585, 395, 350, 20);
+    ctx.fillStyle = '#493b36'; ctx.fillRect(605, 415, 15, 100); ctx.fillRect(916, 415, 15, 100);
+    ctx.fillStyle = '#a28061';
+    ctx.beginPath(); ctx.moveTo(650, 345); ctx.lineTo(710, 345);
+    ctx.lineTo(700, 395); ctx.lineTo(660, 395); ctx.fill();
+    ctx.fillStyle = '#79543e';
+    ctx.beginPath(); ctx.moveTo(780, 325); ctx.lineTo(855, 325);
+    ctx.lineTo(840, 397); ctx.lineTo(794, 397); ctx.fill();
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    const backdrop = new THREE.Mesh(new THREE.PlaneGeometry(6.7, 4.2),
+      new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide }));
+    backdrop.position.set(0, 2.05, -1.6);
+    this.illustratedBackdrop = backdrop;
+    this.group.add(backdrop);
+  }
+
   private buildWindow() {
     // Window frame on left wall
     const frameGeo = new THREE.BoxGeometry(0.3, 2.2, 2.2);
@@ -139,6 +198,31 @@ export class RoomDiorama {
     top.receiveShadow = true;
     this.tableGroup.add(top);
 
+    // A woven rush mat under the materials makes the handmade work legible.
+    const matCanvas = document.createElement('canvas');
+    matCanvas.width = matCanvas.height = 256;
+    const ctx = matCanvas.getContext('2d')!;
+    ctx.fillStyle = '#a88960'; ctx.fillRect(0, 0, 256, 256);
+    for (let y = 0; y < 256; y += 12) {
+      ctx.fillStyle = y % 24 === 0 ? '#c9aa74' : '#9b7d55';
+      ctx.fillRect(0, y, 256, 7);
+      ctx.fillStyle = 'rgba(32,53,72,.43)';
+      ctx.fillRect(0, y + 8, 256, 2);
+    }
+    for (let x = 0; x < 256; x += 8) {
+      ctx.fillStyle = x % 16 === 0 ? 'rgba(239,209,152,.33)' : 'rgba(56,49,44,.23)';
+      ctx.fillRect(x, 0, 2, 256);
+    }
+    const matTexture = new THREE.CanvasTexture(matCanvas);
+    matTexture.colorSpace = THREE.SRGBColorSpace;
+    const rushMat = new THREE.Mesh(new THREE.PlaneGeometry(2.25, 1.36),
+      new THREE.MeshStandardMaterial({ map: matTexture, roughness: 1, side: THREE.DoubleSide,
+        emissive: 0x5b3924, emissiveIntensity: 0.16 }));
+    rushMat.rotation.x = -Math.PI / 2;
+    rushMat.position.set(0, 0.864, 0.1);
+    rushMat.receiveShadow = true;
+    this.tableGroup.add(rushMat);
+
     // Sturdy wooden/bamboo legs
     const legGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.82, 12);
     [[-1.05, 0.41, -0.6], [1.05, 0.41, -0.6], [-1.05, 0.41, 0.7], [1.05, 0.41, 0.7]].forEach(([lx, ly, lz]) => {
@@ -160,6 +244,7 @@ export class RoomDiorama {
       rod.position.set(-0.95 + (i % 5) * 0.07, 0.875, -0.3 + Math.floor(i / 5) * 0.65);
       rod.castShadow = true;
       this.tableGroup.add(rod);
+      this.registerCraftMaterial(0, rod);
     }
 
     // 3. Spool of thin wire (cuộn dây kẽm mảnh)
@@ -169,6 +254,7 @@ export class RoomDiorama {
     spool.position.set(-0.55, 0.885, 0.5);
     spool.castShadow = true;
     this.tableGroup.add(spool);
+    this.registerCraftMaterial(2, spool);
 
     // 4. Ceramic bowl of cold rice paste glue (bát sành Bát Tràng quết hồ dán cơm nguội)
     const bowlGeo = new THREE.CylinderGeometry(0.12, 0.08, 0.08, 24);
@@ -216,9 +302,73 @@ export class RoomDiorama {
       sheet.rotation.z = 0.2 * s;
       sheet.position.set(0.72 + s * 0.1, 0.865 + s * 0.005, -0.28);
       this.tableGroup.add(sheet);
+      this.registerCraftMaterial(1, sheet);
     }
 
     this.group.add(this.tableGroup);
+  }
+
+  private buildCraftTargets(): void {
+    // The fourth prop is a small matchbox; all four halo areas are tappable
+    // directly in the diorama, including on a phone-sized screen.
+    const matchbox = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.035, 0.15),
+      new THREE.MeshStandardMaterial({ color: 0xae4932, roughness: 0.95 }));
+    matchbox.position.set(0.34, 0.89, 0.52);
+    this.tableGroup.add(matchbox);
+    this.registerCraftMaterial(3, matchbox);
+    const positions: [number, number][] = [[-0.82, -0.23], [0.83, -0.22],
+      [-0.55, 0.49], [0.34, 0.52]];
+    for (let i = 0; i < positions.length; i++) {
+      const [x, z] = positions[i];
+      const pick = new THREE.Mesh(new THREE.CircleGeometry(0.27, 32),
+        new THREE.MeshBasicMaterial({ transparent: true, opacity: 0,
+          depthWrite: false, side: THREE.DoubleSide }));
+      pick.rotation.x = -Math.PI / 2;
+      pick.position.set(x, 0.925, z);
+      pick.userData.craftStep = i + 1;
+      this.tableGroup.add(pick);
+      this.craftTargets.push(pick);
+
+      const halo = new THREE.Mesh(new THREE.RingGeometry(0.28, 0.3, 40),
+        new THREE.MeshBasicMaterial({ color: 0xffd78c, transparent: true,
+          opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }));
+      halo.rotation.x = -Math.PI / 2;
+      halo.position.set(x, 0.927, z);
+      this.tableGroup.add(halo);
+      this.craftHalos.push(halo);
+    }
+    this.setCraftStep(0);
+  }
+
+  public setCraftStep(step: number): void {
+    this.craftHalos.forEach((halo, index) => { halo.visible = index === step; });
+    if (step === 0) {
+      this.craftFlights = [];
+      this.craftOrigins.forEach(({ object, position, scale }) => {
+        object.position.copy(position);
+        object.scale.copy(scale);
+        object.visible = true;
+      });
+      return;
+    }
+    const materials = this.craftMaterials[step - 1] ?? [];
+    materials.forEach(object => {
+      this.craftFlights.push({
+        object,
+        position: object.position.clone(),
+        scale: object.scale.clone(),
+        elapsed: 0
+      });
+    });
+  }
+
+  private registerCraftMaterial(stepIndex: number, object: THREE.Object3D): void {
+    this.craftMaterials[stepIndex].push(object);
+    this.craftOrigins.push({
+      object,
+      position: object.position.clone(),
+      scale: object.scale.clone()
+    });
   }
 
   private buildWoodenDoors() {
@@ -304,7 +454,19 @@ export class RoomDiorama {
   }
 
   public update(delta: number) {
-    const dummy = new THREE.Object3D();
+    for (let i = this.craftFlights.length - 1; i >= 0; i--) {
+      const flight = this.craftFlights[i];
+      flight.elapsed = Math.min(0.62, flight.elapsed + delta);
+      const t = flight.elapsed / 0.62;
+      const eased = t * t * (3 - 2 * t);
+      flight.object.position.lerpVectors(flight.position, this.craftArrival, eased);
+      flight.object.scale.copy(flight.scale).multiplyScalar(1 - 0.84 * eased);
+      if (t >= 1) {
+        flight.object.visible = false;
+        this.craftFlights.splice(i, 1);
+      }
+    }
+    const dummy = this.dustDummy;
     for (let i = 0; i < this.particleCount; i++) {
       const pos = this.particlePositions[i];
       const speed = this.particleSpeeds[i];

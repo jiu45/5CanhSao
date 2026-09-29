@@ -77,6 +77,7 @@ export class FestivalSquareScene implements IScene {
   private revealPhase: number = 0;
   private drumTimer: number = 0;
   private cheerTimer: number = 0;
+  private povLingerTimer: number = 0;
 
   // Camera Choreography Coordinates
   // 1. Spectator OTS child eye-level (~1.18m looking toward -Z at lion & temple)
@@ -582,6 +583,7 @@ export class FestivalSquareScene implements IScene {
 
     // Audio start: distant winds and opening chime
     audioManager.startMemoryAscentAudio();
+    audioManager.setScoreMood('moon');
     audioManager.playMemoryAscentPhrase(1);
 
     // Initial subtitle for stage 1
@@ -640,6 +642,8 @@ export class FestivalSquareScene implements IScene {
 
     // Initial subtitle
     this.overlay.setSubtitle(StoryConfig.festivalSquare.revealGateEntry, 4000);
+    audioManager.stopNightAmbience();
+    audioManager.setScoreMood('festival');
 
     // Initial muffled drum cadence
     audioManager.playLionDanceRhythm(0.75, 'distant');
@@ -671,13 +675,9 @@ export class FestivalSquareScene implements IScene {
         this.camera.lookAt(this.camLionPovLookAt);
       },
       () => {
-        // Complete transition: begin gesture minigame
-        this.sceneState = SquareSceneState.LION_POV_MINIGAME;
+        // Let the child's lantern and the audience register before the gesture UI arrives.
         this.overlay.clearSubtitle();
-        this.gestureOverlay.startMinigame(
-          (index) => this.handleGestureSuccess(index),
-          () => this.triggerTransitionToSpectator()
-        );
+        this.povLingerTimer = 1.35;
       }
     );
   }
@@ -822,6 +822,16 @@ export class FestivalSquareScene implements IScene {
     } else if (this.sceneState === SquareSceneState.TRANSITION_TO_LION) {
       // Smooth glide into lion head position
       this.camera.position.lerp(this.camLionPovPos, Math.min(1, delta * 3.5));
+      if (this.povLingerTimer > 0) {
+        this.povLingerTimer -= delta;
+        if (this.povLingerTimer <= 0) {
+          this.sceneState = SquareSceneState.LION_POV_MINIGAME;
+          this.gestureOverlay.startMinigame(
+            (index) => this.handleGestureSuccess(index),
+            () => this.triggerTransitionToSpectator()
+          );
+        }
+      }
     } else if (this.sceneState === SquareSceneState.LION_POV_MINIGAME) {
       // 180-Degree Lion POV looking toward +Z (at the child holding the glowing star lantern!)
       const breathBob = Math.sin(time * 4.0) * 0.025;
@@ -865,11 +875,6 @@ export class FestivalSquareScene implements IScene {
       this.camera.lookAt(this.camTargetLookAt);
 
       this.spectacleTimer += delta;
-      // Auto-start ascent after 7.5s if player hasn't clicked yet
-      if (this.spectacleTimer > 7.5 && this.sceneState === SquareSceneState.FINAL_SPECTACLE) {
-        this.startMemoryAscent();
-      }
-
       this.cheerTimer += delta;
       if (this.cheerTimer > 3.2) {
         this.cheerTimer = 0;

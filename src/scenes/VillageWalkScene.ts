@@ -48,6 +48,9 @@ export class VillageWalkScene implements IScene {
   private windGustActive: boolean = false;
   private windGustTimer: number = 0;
   private windGustTriggered: boolean = false;
+  private unshieldedWindExposure = 0;
+  private flameNeedsRelight = false;
+  private windLessonCompleted = false;
 
   // Vignette progression states
   private vignette1Triggered: boolean = false; // Family porch
@@ -620,11 +623,15 @@ export class VillageWalkScene implements IScene {
   }
 
   public init() {
+    audioManager.setScoreMood('village');
     this.playerZ = -5.8;
     this.currentSpeed = 0;
     this.warningShown = false;
     this.windGustActive = false;
     this.windGustTriggered = false;
+    this.unshieldedWindExposure = 0;
+    this.flameNeedsRelight = false;
+    this.windLessonCompleted = false;
     this.vignette1Triggered = false;
     this.vignette2Triggered = false;
     this.vignette3Triggered = false;
@@ -643,11 +650,6 @@ export class VillageWalkScene implements IScene {
     // Initial Story & movement guidance
     this.overlay.setSubtitle(StoryConfig.villageWalk.arrivalHint, 3800);
 
-    const t1 = window.setTimeout(() => {
-      this.overlay.setSubtitle(StoryConfig.villageWalk.movementInstruction, 6000);
-    }, 4000);
-    this.timerIds.push(t1);
-
     // Start background night atmosphere
     audioManager.startNightAmbience();
   }
@@ -656,6 +658,7 @@ export class VillageWalkScene implements IScene {
     this.shieldUiContainer = document.createElement('div');
     this.shieldUiContainer.className = 'cinematic-shield-ui';
     this.shieldUiContainer.innerHTML = `
+      <div class="village-movement-hint">Giữ W / ↑ hoặc chạm giữ đường để bước</div>
       <button class="shield-lantern-btn" title="Giữ để lấy tay che chở ngọn nến">
         <span class="shield-icon">✋</span>
         <span class="shield-label">Che chở nến (Space)</span>
@@ -675,7 +678,7 @@ export class VillageWalkScene implements IScene {
       btn.style.border = '1px solid rgba(245, 158, 11, 0.5)';
       btn.style.borderRadius = '30px';
       btn.style.color = '#fef3c7';
-      btn.style.fontFamily = "'Cinzel', serif, sans-serif";
+      btn.style.fontFamily = "'Segoe UI', system-ui, Arial, sans-serif";
       btn.style.fontSize = '14px';
       btn.style.letterSpacing = '0.5px';
       btn.style.cursor = 'pointer';
@@ -685,6 +688,7 @@ export class VillageWalkScene implements IScene {
       const activateShield = (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
+        if (this.flameNeedsRelight) this.relightCandle();
         this.isShielding = true;
         this.lantern.setShielded(true);
         btn.style.background = 'rgba(245, 158, 11, 0.85)';
@@ -716,12 +720,32 @@ export class VillageWalkScene implements IScene {
       this.isPressingForward = true;
     }
     if (e.code === 'Space' || e.code === 'KeyB') {
+      if (this.flameNeedsRelight) this.relightCandle();
       if (!this.isShielding) {
         this.isShielding = true;
         this.lantern.setShielded(true);
         audioManager.playHandShield();
       }
     }
+  }
+
+  private relightCandle(): void {
+    if (!this.flameNeedsRelight) return;
+    this.flameNeedsRelight = false;
+    this.windLessonCompleted = true;
+    this.unshieldedWindExposure = 0;
+    this.lantern.ignite();
+    this.setShieldPrompt(false);
+    this.overlay.hideNextButton();
+    this.overlay.setSubtitle('Bạn châm lại ngọn nến. Ánh sao nhỏ trở về trong tay.', 3800, true);
+    audioManager.playCandleIgnite();
+  }
+
+  private setShieldPrompt(relight: boolean): void {
+    const button = this.shieldUiContainer?.querySelector('.shield-lantern-btn') as HTMLButtonElement | null;
+    const label = button?.querySelector('.shield-label');
+    if (label) label.textContent = relight ? 'Châm lại nến (Space)' : 'Che chở nến (Space)';
+    if (button) button.title = relight ? 'Chạm để châm lại ngọn nến' : 'Giữ để lấy tay che chở ngọn nến';
   }
 
   private onKeyUp(e: KeyboardEvent) {
@@ -736,14 +760,15 @@ export class VillageWalkScene implements IScene {
 
   public update(delta: number, _time: number) {
     // 1. Acceleration / deceleration handling
-    if (!this.festivalArrived && this.isPressingForward) {
+    if (!this.festivalArrived && !this.flameNeedsRelight && this.isPressingForward) {
       this.currentSpeed = Math.min(this.maxSpeed, this.currentSpeed + delta * 3.2);
       this.speedTimer += delta;
 
       // Show gentle candle warning if running continuously without shielding
       if (this.speedTimer > 2.8 && !this.warningShown && !this.isShielding) {
         this.warningShown = true;
-        this.overlay.setSubtitle(StoryConfig.villageWalk.candleWarning, 4500);
+        // Let the flame bend before the gust; the actionable warning belongs
+        // at the gust itself, so the family vignette remains readable.
       }
     } else {
       this.currentSpeed = Math.max(0, this.currentSpeed - delta * 4.5);
@@ -792,18 +817,31 @@ export class VillageWalkScene implements IScene {
         this.windGustTriggered = true;
         this.windGustActive = true;
         audioManager.playWindGust();
-        this.overlay.setSubtitle(StoryConfig.villageWalk.windGustWarning, 5000);
+        this.overlay.setSubtitle(StoryConfig.villageWalk.windGustWarning, 5000, true);
       }
       this.windGustTimer += delta;
       // Gust profile
       const gustMagnitude = Math.sin(Math.min(1, this.windGustTimer / 3.5) * Math.PI) * 1.35;
       effectiveWindFactor = Math.max(effectiveWindFactor, gustMagnitude);
+      if (!this.isShielding && !this.windLessonCompleted && !this.flameNeedsRelight) {
+        this.unshieldedWindExposure += delta * Math.max(0, gustMagnitude - 0.3);
+        if (this.unshieldedWindExposure > 0.72) {
+          this.flameNeedsRelight = true;
+          this.setShieldPrompt(true);
+          this.currentSpeed = 0;
+          this.lantern.extinguish();
+          this.overlay.setSubtitle('Gió thổi tắt nến. Dừng lại một nhịp rồi châm lại ngọn lửa nhé.', 6000, true);
+          this.overlay.showNextButton('Châm lại ngọn nến 🕯️', () => this.relightCandle());
+        }
+      }
     } else {
       this.windGustActive = false;
     }
 
     // Update Lantern with flame bending and shielding
     this.lantern.update(delta, effectiveWindFactor);
+    this.lanternGroundLight.intensity += ((this.lantern.isLit ? 2.2 : 0.12) -
+      this.lanternGroundLight.intensity) * Math.min(1, delta * 8);
 
     const lanternBob = Math.sin(this.walkTime * 3.2 + 0.5) * 0.03;
     const lanternSway = Math.sin(this.walkTime * 1.6) * 0.05;
@@ -883,8 +921,8 @@ export class VillageWalkScene implements IScene {
       this.kidsRunningActive = true;
       this.kidsRunProgress = 0;
       this.kidRunStartZ = this.playerZ + 1.8; // Start from just behind player's right shoulder!
-      audioManager.playChildrenLaughter();
-      this.overlay.setSubtitle(StoryConfig.villageWalk.vignetteKids, 5200);
+      audioManager.playLanternParadeCall(0.05);
+      // The passing children and their laughter tell this beat without text.
     }
 
     // Vignette 2 animation: Kid sprints from behind player forward along the road
@@ -963,7 +1001,7 @@ export class VillageWalkScene implements IScene {
       if (progress > 0.6) {
         audioManager.playFestivalCheer(0.3 + progress * 0.7);
       } else {
-        audioManager.playChildrenFestivalChant(0.08 + progress * 0.15);
+        audioManager.playLanternParadeCall(0.04 + progress * 0.06);
       }
     }
   }

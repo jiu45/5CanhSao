@@ -66,6 +66,9 @@ export class SceneManager {
     inheritedSwitches?: { local: boolean; remote: boolean },
     phase7Handoff?: Phase7GateHandoff) {
     console.log('[SCENE MANAGER] Switching from', this.currentSceneId, 'to', sceneId);
+    // Retire the previous line at the covered scene boundary, before the new
+    // scene can schedule its own caption.
+    this.overlay.clearSubtitle();
     if (this.currentScene) {
       const retired = this.currentScene;
       retired.destroy();

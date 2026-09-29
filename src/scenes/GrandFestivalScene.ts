@@ -69,6 +69,11 @@ export class GrandFestivalScene implements IScene {
   public isFinished = false;
   private readonly role: 'host' | 'guest';
   private fadeLayer!: HTMLDivElement;
+  private endCard!: HTMLDivElement;
+  private pauseLetterButton!: HTMLButtonElement;
+  private replayLetterButton!: HTMLButtonElement;
+  private letterSheet!: HTMLDivElement;
+  private messagePaused = false;
   private readonly firedCues = new Set<string>();
 
   private loadFinalWish(): void {
@@ -131,6 +136,7 @@ export class GrandFestivalScene implements IScene {
     }
     audioManager.setModernFestivalFocus(0.3);
     audioManager.setFestivalVistaMuffle(4200);
+    audioManager.setScoreMood('gate');
     this.overlay.hideNextButton();
     this.overlay.clearSubtitle();
     this.overlay.setLetterboxVisible(false, 1000);
@@ -139,6 +145,96 @@ export class GrandFestivalScene implements IScene {
     Object.assign(this.fadeLayer.style, { position: 'fixed', inset: '0',
       background: '#030610', zIndex: '1000', opacity: '0', pointerEvents: 'none' });
     document.body.appendChild(this.fadeLayer);
+    this.endCard = document.createElement('div');
+    this.endCard.className = 'final-end-card';
+    this.endCard.setAttribute('role', 'img');
+    this.endCard.setAttribute('aria-label', 'Hai chiếc đèn ông sao bên nhau dưới cùng một vầng trăng');
+    this.endCard.innerHTML = `
+      <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <defs>
+          <radialGradient id="end-moon-glow"><stop stop-color="#f9f3dd" stop-opacity=".7"/>
+            <stop offset=".45" stop-color="#b9c8d9" stop-opacity=".21"/>
+            <stop offset="1" stop-color="#7c9ab9" stop-opacity="0"/></radialGradient>
+          <radialGradient id="end-shared-light"><stop stop-color="#fff4ba" stop-opacity=".9"/>
+            <stop offset=".46" stop-color="#f9bd68" stop-opacity=".34"/>
+            <stop offset="1" stop-color="#f9bd68" stop-opacity="0"/></radialGradient>
+          <linearGradient id="end-sky" x2="0" y2="1"><stop stop-color="#030916"/>
+            <stop offset="1" stop-color="#11223b"/></linearGradient>
+        </defs>
+        <rect width="1280" height="720" fill="url(#end-sky)"/>
+        <circle cx="640" cy="169" r="189" fill="url(#end-moon-glow)"/>
+        <circle cx="640" cy="169" r="68" fill="#faf4df"/>
+        <path d="M0 478 Q145 442 294 477 Q457 434 640 472 Q835 431 1000 477 Q1132 446 1280 476 V720 H0Z"
+          fill="#0b1b2e"/>
+        <path d="M0 541 Q175 500 360 534 Q532 501 640 523 Q792 490 953 532 Q1120 506 1280 544 V720 H0Z"
+          fill="#091725"/>
+        <path d="M0 604 Q207 559 407 581 Q534 566 640 576 Q764 562 900 583 Q1092 551 1280 603 V720 H0Z"
+          fill="#06111f"/>
+        <path d="M77 0 Q168 203 131 484 M162 0 Q220 158 183 397 M1201 0 Q1110 222 1152 472
+          M1114 0 Q1061 160 1097 365" fill="none" stroke="#102b43" stroke-width="22"/>
+        <path d="M122 255 l-110 -62 90 83 M164 347 l96 -69 -79 88 M1159 235 l112 -66 -87 90
+          M1115 337 l-101 -69 86 86" fill="#153955"/>
+        <path d="M310 419 Q642 386 968 419" fill="none" stroke="#aa7a56" stroke-width="2" opacity=".55"/>
+        <circle cx="422" cy="407" r="5" fill="#ffcf86"/><circle cx="512" cy="397" r="5" fill="#ffcf86"/>
+        <circle cx="640" cy="393" r="5" fill="#ffcf86"/><circle cx="768" cy="397" r="5" fill="#ffcf86"/>
+        <circle cx="858" cy="407" r="5" fill="#ffcf86"/>
+        <ellipse cx="640" cy="606" rx="250" ry="92" fill="url(#end-shared-light)"/>
+        <path d="M535 614 Q640 576 745 614" fill="none" stroke="#ffe8ab" stroke-width="3" opacity=".52"/>
+        <g transform="translate(552 522)">
+          <path d="M0 -67 L17 -23 L62 -22 L26 7 L39 52 L0 27 L-39 52 L-26 7 L-62 -22 L-17 -23Z"
+            fill="#b94533" stroke="#ffce72" stroke-width="6" stroke-linejoin="round"/>
+          <path d="M0 -51 L13 -17 L48 -16 L20 6 L29 39 L0 20 L-29 39 L-20 6 L-48 -16 L-13 -17Z"
+            fill="#f48a43" stroke="#ffecaa" stroke-width="2"/>
+          <circle r="14" fill="#fff1aa"/><path d="M0 52 V118" stroke="#8a5738" stroke-width="7"/>
+        </g>
+        <g transform="translate(728 522)">
+          <path d="M0 -67 L17 -23 L62 -22 L26 7 L39 52 L0 27 L-39 52 L-26 7 L-62 -22 L-17 -23Z"
+            fill="#315f70" stroke="#eac994" stroke-width="6" stroke-linejoin="round"/>
+          <path d="M0 -51 L13 -17 L48 -16 L20 6 L29 39 L0 20 L-29 39 L-20 6 L-48 -16 L-13 -17Z"
+            fill="#80afb3" stroke="#fff0bb" stroke-width="2"/>
+          <circle r="14" fill="#e2f8eb"/><path d="M0 52 V118" stroke="#8a5738" stroke-width="7"/>
+        </g>
+      </svg>`;
+    document.body.appendChild(this.endCard);
+    this.pauseLetterButton = document.createElement('button');
+    this.pauseLetterButton.className = 'final-letter-control';
+    this.pauseLetterButton.type = 'button';
+    this.pauseLetterButton.textContent = 'Tạm dừng lời chúc';
+    this.pauseLetterButton.style.display = 'none';
+    this.pauseLetterButton.addEventListener('click', () => {
+      this.messagePaused = !this.messagePaused;
+      audioManager.pauseScore(this.messagePaused);
+      this.pauseLetterButton.textContent = this.messagePaused
+        ? 'Tiếp tục lời chúc' : 'Tạm dừng lời chúc';
+    });
+    document.body.appendChild(this.pauseLetterButton);
+    this.replayLetterButton = document.createElement('button');
+    this.replayLetterButton.className = 'final-letter-replay';
+    this.replayLetterButton.type = 'button';
+    this.replayLetterButton.textContent = 'Đọc lại lời chúc ✉';
+    this.replayLetterButton.style.display = 'none';
+    this.replayLetterButton.addEventListener('click', () => {
+      this.letterSheet.style.display = 'flex';
+      scrollHint.hidden = paper.scrollHeight <= paper.clientHeight + 8;
+    });
+    document.body.appendChild(this.replayLetterButton);
+    this.letterSheet = document.createElement('div');
+    this.letterSheet.className = 'final-letter-sheet';
+    this.letterSheet.style.display = 'none';
+    const paper = document.createElement('article');
+    const heading = document.createElement('h2');
+    heading.textContent = 'Dưới cùng một vầng trăng';
+    const scrollHint = document.createElement('div');
+    scrollHint.className = 'final-letter-scroll-hint';
+    scrollHint.textContent = 'Cuộn xuống để đọc trọn lá thư ↓';
+    const message = document.createElement('p');
+    message.textContent = finalWishText.trim();
+    const close = document.createElement('button');
+    close.type = 'button'; close.textContent = 'Khép lá thư';
+    close.addEventListener('click', () => { this.letterSheet.style.display = 'none'; });
+    paper.append(heading, scrollHint, message, close);
+    this.letterSheet.appendChild(paper);
+    document.body.appendChild(this.letterSheet);
     const url = new URL(window.location.href);
     url.searchParams.set('scene', '8');
     history.replaceState({}, '', url);
@@ -149,7 +245,10 @@ export class GrandFestivalScene implements IScene {
   public update(delta: number, time: number): void {
     if (this.destroyed) return;
     const dt = Math.min(delta, 0.1);
-    this.elapsed += dt;
+    if (!this.messagePaused) this.elapsed += dt;
+    const messageEnd = this.getMessageEndTime();
+    this.pauseLetterButton.style.display = this.elapsed >= 24.1 && this.elapsed < messageEnd
+      ? 'block' : 'none';
     const open = smooth(2.0, 6.3, this.elapsed);
     this.environment.setGateRevealProgress(open);
     this.environment.setGateCeremony(this.elapsed / 2.2);
@@ -212,27 +311,40 @@ export class GrandFestivalScene implements IScene {
     audioManager.setFestivalVistaMuffle(THREE.MathUtils.lerp(
       THREE.MathUtils.lerp(12000, 1250, intimacy), 11000, celebration));
     this.fadeLayer.style.opacity = fade.toFixed(3);
+    const endCardReveal = smooth(releaseAt + 27.5, releaseAt + 31.0, this.elapsed);
+    this.endCard.style.opacity = endCardReveal.toFixed(3);
     this.fireCue('reveal', 6.3);
     this.fireCue('intimate', 18.2);
     this.fireCue('release', releaseAt + 0.2);
     this.fireCue('moon', releaseAt + 17.5);
-    if (fade >= 1) {
+    if (endCardReveal >= 1 && !this.isFinished) {
       this.fadeLayer.style.opacity = '1';
       this.fadeLayer.style.pointerEvents = 'auto';
       this.isFinished = true;
+      this.replayLetterButton.style.display = 'block';
       audioManager.stopModernAmbientAudio();
+      audioManager.stopScore();
     }
   }
 
   private fireCue(kind: 'reveal' | 'intimate' | 'release' | 'moon', at: number): void {
     if (this.elapsed < at || this.firedCues.has(kind)) return;
     this.firedCues.add(kind);
+    if (kind === 'reveal') audioManager.setScoreMood('plaza');
+    if (kind === 'intimate') audioManager.setScoreMood('letter');
+    if (kind === 'release') audioManager.setScoreMood('release');
     audioManager.playPhase7Cue(kind);
   }
 
   private getMessageEndTime(): number {
     return this.messageBeats.reduce((end, beat) =>
-      end + Math.min(12, Math.max(5.2, beat.split(/\s+/).length / 2.6)), 24.1);
+      end + this.messageBeatDuration(beat), 24.1);
+  }
+
+  private messageBeatDuration(beat: string): number {
+    // Leave the first and last second for the lettering to arrive and leave.
+    // The fully visible interval must still be long enough to read the beat.
+    return Math.min(15, Math.max(6, 2.3 + beat.split(/\s+/).length / 2.4));
   }
 
   private updateMessage(time: number, intimacy: number, overlap: number): void {
@@ -241,7 +353,7 @@ export class GrandFestivalScene implements IScene {
     let current = '';
     let opacity = 0;
     for (const beat of this.messageBeats) {
-      const duration = Math.min(12, Math.max(5.2, beat.split(/\s+/).length / 2.6));
+      const duration = this.messageBeatDuration(beat);
       const end = cursor + duration;
       if (this.elapsed >= cursor && this.elapsed < end) {
         current = beat;
@@ -257,10 +369,15 @@ export class GrandFestivalScene implements IScene {
   public destroy(): void {
     this.destroyed = true;
     audioManager.stopModernAmbientAudio();
+    audioManager.stopScore();
     this.plaza.dispose();
     this.finale.dispose();
     this.finaleSky.dispose();
+    this.endCard?.remove();
     this.fadeLayer?.remove();
+    this.pauseLetterButton?.remove();
+    this.replayLetterButton?.remove();
+    this.letterSheet?.remove();
     this.environment.dispose();
     (this.playerLantern as any)?.dispose?.();
     (this.remoteLantern as any)?.dispose?.();

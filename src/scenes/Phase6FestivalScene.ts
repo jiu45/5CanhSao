@@ -67,6 +67,8 @@ export class Phase6FestivalScene implements IScene {
   private pointerHold = false;
   private keyHold = false;
   private separationElapsed = -1;
+  private reunionHoldUntil = 0;
+  private reunionSubtitleAt = 0;
   private lastStage: Phase6Stage | null = null;
   private lastRevision = -1;
   private lastCrowdTier = -1;
@@ -118,6 +120,7 @@ export class Phase6FestivalScene implements IScene {
     audioManager.init();
     audioManager.startModernAmbientAudio();
     audioManager.startFestivalVistaAmbience();
+    audioManager.setScoreMood('together');
     this.setupLanterns();
     this.setupNetwork();
     this.setupHud();
@@ -294,6 +297,11 @@ export class Phase6FestivalScene implements IScene {
     window.dispatchEvent(new CustomEvent('trungthu:phase6-visual', { detail: { name, ...extra } }));
     const audio = (PHASE6_AUDIO_CUES as Record<string, string>)[name];
     if (audio) window.dispatchEvent(new CustomEvent('trungthu:phase6-audio', { detail: { name: audio } }));
+    if (name === 'crowdBuildup') audioManager.setScoreMood('crowded');
+    if (name === 'separation') audioManager.setScoreMood('lost');
+    if (name === 'memorySuccess') audioManager.setScoreMood('hope');
+    if (name === 'reunion') audioManager.setScoreMood('reunion');
+    if (name === 'gateReady') audioManager.setScoreMood('gate');
     if (name === 'separation') audioManager.playPhase6Cue('separation');
     if (name === 'memoryStart') audioManager.playPhase6Cue('memory');
     if (name === 'memorySuccess') audioManager.playPhase6Cue('hope');
@@ -327,13 +335,21 @@ export class Phase6FestivalScene implements IScene {
     }
     if (state.memorySolved && (this.routeId === Phase6RouteId.host || this.routeId === Phase6RouteId.guest)) {
       this.changeRoute(rejoinRoute(this.role));
+      // The rejoin path points away from the memory alcove. Keep the camera
+      // behind the lantern instead of lerping through unlit ground.
+      this.updateCamera(1, true);
     }
     if (state.reunited && this.routeId !== Phase6RouteId.final) {
       this.changeRoute(Phase6RouteId.final);
+      this.reunionHoldUntil = performance.now() + 4300;
+      this.reunionSubtitleAt = performance.now() + 2100;
+      // The two rejoin paths face different directions. Cut to the authored
+      // two-lantern shot now, before a slow camera lerp can sweep into darkness.
+      this.updateCamera(1, true);
       this.togetherMode = 'TOGETHER_MODE'; this.togetherHelper.setEnabled(true);
       this.remoteLanternVisible = this.roomManager.hasCompanion;
       this.emitHook('reunion');
-      this.overlay.setSubtitle('Ánh đèn ấy đã trở lại. Cùng nhau đi nốt đoạn đường.', 5000);
+      this.overlay.clearSubtitle();
     }
     this.environment.setGatePresence(state.gatePlayersReady.host, state.gatePlayersReady.guest, state.gateReady);
     if (state.gateReady) {
@@ -387,6 +403,7 @@ export class Phase6FestivalScene implements IScene {
   }
 
   private canMove(): boolean {
+    if (performance.now() < this.reunionHoldUntil) return false;
     if (!this.roomManager.hasCompanion || !this.peerPhase6Ready || this.separationElapsed >= 0 && this.separationElapsed < 1.55) return false;
     const state = this.phase6State.state;
     if (this.routeId === Phase6RouteId.shared) {
@@ -427,6 +444,7 @@ export class Phase6FestivalScene implements IScene {
       if (this.separationElapsed >= 1.55 && this.routeId === Phase6RouteId.shared) {
         this.togetherMode = 'SEPARATED_MODE'; this.togetherHelper.setEnabled(false);
         this.changeRoute(splitRoute(this.role));
+        this.updateHud();
         this.emitHook('separatedModeActive');
       }
     }
@@ -442,6 +460,10 @@ export class Phase6FestivalScene implements IScene {
     this.remoteInterpolator.update(dt);
     this.companionProgressT = this.remoteInterpolator.currentProgressT;
     this.updateTransforms();
+    if (this.reunionSubtitleAt && performance.now() >= this.reunionSubtitleAt) {
+      this.reunionSubtitleAt = 0;
+      this.overlay.setSubtitle('Cuối cùng, hai ngọn đèn lại ở bên nhau.', 4500, true, 'top');
+    }
     this.broadcaster.update(dt, this.movementState());
     this.environment.setCrowdDensity(this.routeId === Phase6RouteId.shared ? this.progressT : 1,
       this.routeId === Phase6RouteId.shared);
@@ -544,16 +566,20 @@ export class Phase6FestivalScene implements IScene {
     const tangent = curve.getTangentAt(this.progressT).normalize();
     const shared = this.routeId === Phase6RouteId.shared;
     const final = this.routeId === Phase6RouteId.final;
+    // Keep both lanterns in the same close composition until the players
+    // actually choose to walk toward the gate, even on a slow device.
+    const reunionFraming = final && this.progressT < 0.045 && !this.phase6State.state.gateReady;
+    const reunionStill = reunionFraming && performance.now() < this.reunionHoldUntil;
     const memory = this.phase6State.state.stage === 'MEMORY_PUZZLE';
     const elder = this.phase6State.state.stage === 'ELDER_PUZZLE';
     const crowded = shared && this.progressT > 0.72;
-    const distance = final ? 9.2 : elder ? 7.5 : memory && this.role === 'guest' ? 5.6
+    const distance = reunionStill ? 5.2 : final ? 9.2 : elder ? 7.5 : memory && this.role === 'guest' ? 5.6
       : crowded ? 6.0 : shared ? 7.0 : 6.6;
-    const height = final ? 3.3 : elder ? 2.7 : memory ? 2.6 : 2.4;
+    const height = reunionStill ? 2.1 : final ? 3.3 : elder ? 2.7 : memory ? 2.6 : 2.4;
     const target = p.clone().addScaledVector(tangent, -distance);
     target.y += height;
-    const lookAt = p.clone().addScaledVector(tangent, final ? 8.2 : memory ? 5.0 : 7.5);
-    lookAt.y += final ? 3.05 : memory ? 1.85 : 1.45;
+    const lookAt = p.clone().addScaledVector(tangent, reunionStill ? 0.5 : final ? 8.2 : memory ? 5.0 : 7.5);
+    lookAt.y += reunionStill ? 1.4 : final ? 3.05 : memory ? 1.85 : 1.45;
     if (elder) lookAt.set(118.2, 1.55, -35.2);
     if (memory && this.role === 'guest') lookAt.set(130.55, 1.72, -98.4);
     if (snap) this.camera.position.copy(target);
@@ -561,7 +587,7 @@ export class Phase6FestivalScene implements IScene {
     if (snap) this.cameraLookAt.copy(lookAt);
     else this.cameraLookAt.lerp(lookAt, 1 - Math.exp(-3 * delta));
     this.camera.lookAt(this.cameraLookAt);
-    const fov = final ? 62 : elder ? 55 : memory && this.role === 'guest' ? 50
+    const fov = reunionStill ? 43 : reunionFraming ? 49 : final ? 62 : elder ? 55 : memory && this.role === 'guest' ? 50
       : crowded ? 55 : shared ? 61 : 56;
     const nextFov = snap ? fov : THREE.MathUtils.damp(this.camera.fov, fov, 2.5, delta);
     if (Math.abs(this.camera.fov - nextFov) > 0.01) {
@@ -600,7 +626,7 @@ export class Phase6FestivalScene implements IScene {
     this.hudStyle = document.createElement('style');
     this.hudStyle.textContent = `.phase6-hud{position:fixed;z-index:28;top:20px;left:20px;max-width:min(360px,calc(100vw - 40px));
       padding:10px 16px;border:1px solid #bb8956;border-radius:12px;color:#ffdfad;background:rgba(15,19,36,.78);
-      font:14px Georgia,serif;pointer-events:none}.phase6-hud small{display:block;color:#ddcbb4;margin-top:4px}`;
+      font:14px 'Segoe UI',system-ui,Arial,sans-serif;pointer-events:none}.phase6-hud small{display:block;color:#ddcbb4;margin-top:4px}`;
     document.head.appendChild(this.hudStyle);
     this.hud = document.createElement('div'); this.hud.className = 'phase6-hud';
     document.body.appendChild(this.hud); this.updateHud();

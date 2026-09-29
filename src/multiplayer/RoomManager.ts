@@ -449,7 +449,7 @@ export class RoomManager {
         </div>
         <h2 id="dialog-title" class="trungthu-dialog-title">Hai ngọn đèn đã sum vầy cùng nhau</h2>
         <p class="trungthu-dialog-desc">
-          Cung đường hội này hiện đã có đủ hai bạn đồng hành (đèn nan tre truyền thống và đèn pin hiện đại).
+          Cung đường hội này hiện đã có đủ hai bạn đồng hành, mỗi người mang theo một chiếc đèn của riêng mình.
           Hãy tạo một cung đường mới để cùng thắp sáng hành trình của riêng bạn nhé.
         </p>
         <div class="trungthu-dialog-actions">
@@ -596,7 +596,7 @@ export class RoomManager {
         50% { transform: scale(1.25); opacity: 1; }
       }
       .trungthu-dialog-title {
-        font-family: 'Cinzel', 'Playfair Display', serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 1.55rem;
         color: #f4c466;
         letter-spacing: 0.08em;
@@ -604,7 +604,7 @@ export class RoomManager {
         text-shadow: 0 0 20px rgba(244, 196, 102, 0.5);
       }
       .trungthu-dialog-desc {
-        font-family: 'Quicksand', sans-serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 0.98rem;
         line-height: 1.65;
         color: #dce7f7;
@@ -622,7 +622,7 @@ export class RoomManager {
         border: 1px solid rgba(244, 196, 102, 0.6);
         border-radius: 30px;
         padding: 12px 28px;
-        font-family: 'Cinzel', 'Playfair Display', serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 1rem;
         letter-spacing: 0.05em;
         transition: all 0.3s ease;
@@ -643,7 +643,7 @@ export class RoomManager {
         border-radius: 30px;
         padding: 10px 24px;
         color: #fffaf0;
-        font-family: 'Quicksand', sans-serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 0.95rem;
         font-weight: 500;
         letter-spacing: 0.03em;

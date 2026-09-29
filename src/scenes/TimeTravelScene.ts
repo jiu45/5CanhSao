@@ -4,6 +4,7 @@ import { Moon } from '../props/Moon';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { StoryConfig } from '../config/StoryConfig';
 import { audioManager } from '../audio/AudioManager';
+import { MemoryPrelude } from '../ui/MemoryPrelude';
 
 export class TimeTravelScene implements IScene {
   public scene: THREE.Scene;
@@ -15,12 +16,13 @@ export class TimeTravelScene implements IScene {
 
   private stateTime: number = 0;
   private isTransitioning: boolean = false;
-  private starCount: number = 2200;
+  private starCount: number = 420;
   private angles: Float32Array;
   private radii: Float32Array;
   private radialSpeeds: Float32Array;
   private rotSpeeds: Float32Array;
   private timerIds: number[] = [];
+  private prelude: MemoryPrelude | null = null;
 
   constructor(camera: THREE.PerspectiveCamera, overlay: StoryOverlay,
     onComplete: () => void, private readonly onSequenceStarted?: () => void) {
@@ -37,6 +39,29 @@ export class TimeTravelScene implements IScene {
     // Full Moon centered below title
     this.moon = new Moon();
     this.moon.group.position.set(0, -0.6, -14);
+    // The opening moon is a painted paper disc, not an overexposed sphere.
+    this.moon.moonMesh.visible = false;
+    const moonCanvas = document.createElement('canvas');
+    moonCanvas.width = moonCanvas.height = 512;
+    const moonCtx = moonCanvas.getContext('2d')!;
+    const disc = moonCtx.createRadialGradient(225, 210, 22, 256, 256, 231);
+    disc.addColorStop(0, '#f4ebd8'); disc.addColorStop(0.75, '#d8dce0');
+    disc.addColorStop(0.94, '#9eb4c7'); disc.addColorStop(1, 'rgba(112,143,170,0)');
+    moonCtx.fillStyle = disc; moonCtx.beginPath(); moonCtx.arc(256, 256, 231, 0, Math.PI * 2); moonCtx.fill();
+    for (const [x, y, radius, alpha] of [[172, 172, 24, .13], [307, 290, 32, .1],
+      [214, 333, 18, .1], [359, 184, 13, .09]] as const) {
+      moonCtx.fillStyle = `rgba(98,123,142,${alpha})`;
+      moonCtx.beginPath(); moonCtx.arc(x, y, radius, 0, Math.PI * 2); moonCtx.fill();
+    }
+    const moonTex = new THREE.CanvasTexture(moonCanvas);
+    moonTex.colorSpace = THREE.SRGBColorSpace;
+    this.moon.group.add(new THREE.Mesh(new THREE.PlaneGeometry(3.8, 3.8),
+      new THREE.MeshBasicMaterial({ map: moonTex, transparent: true, depthWrite: false })));
+    const halo = this.moon.group.children.find(child =>
+      child instanceof THREE.Mesh && child !== this.moon.moonMesh);
+    if (halo instanceof THREE.Mesh) {
+      (halo.material as THREE.MeshBasicMaterial).opacity = 0.38;
+    }
     this.scene.add(this.moon.group);
 
     // Particle Trail / Inward Spiral Vortex (Temporal Rewind Effect)
@@ -52,7 +77,7 @@ export class TimeTravelScene implements IScene {
     for (let i = 0; i < this.starCount; i++) {
       const angle = Math.random() * Math.PI * 2;
       const radius = 1.0 + Math.random() * 18.0;
-      const z = -Math.random() * 35;
+      const z = -15 - Math.random() * 20;
 
       this.angles[i] = angle;
       this.radii[i] = radius;
@@ -78,11 +103,23 @@ export class TimeTravelScene implements IScene {
     starGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     starGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
+    const dotCanvas = document.createElement('canvas');
+    dotCanvas.width = dotCanvas.height = 64;
+    const dotCtx = dotCanvas.getContext('2d')!;
+    const glow = dotCtx.createRadialGradient(32, 32, 1, 32, 32, 31);
+    glow.addColorStop(0, 'rgba(255,250,234,.9)');
+    glow.addColorStop(.4, 'rgba(255,234,194,.38)');
+    glow.addColorStop(1, 'rgba(255,234,194,0)');
+    dotCtx.fillStyle = glow; dotCtx.fillRect(0, 0, 64, 64);
+    const dotTexture = new THREE.CanvasTexture(dotCanvas);
     const starMat = new THREE.PointsMaterial({
-      size: 0.1,
+      size: 0.09,
+      map: dotTexture,
       vertexColors: true,
       transparent: true,
-      opacity: 0.85,
+      alphaTest: 0.04,
+      depthWrite: false,
+      opacity: 0.68,
       blending: THREE.AdditiveBlending
     });
     this.stars = new THREE.Points(starGeo, starMat);
@@ -113,24 +150,28 @@ export class TimeTravelScene implements IScene {
 
   private startSequence() {
     this.onSequenceStarted?.();
+    this.overlay.beginTimeRewind();
     // Play accelerating then slowing clock tick-tock
     audioManager.playClockRewind();
+    audioManager.setScoreMood('memory');
 
     this.overlay.setSubtitle(StoryConfig.openingSubtitles[0], 3500);
 
     const t1 = window.setTimeout(() => {
       this.overlay.setSubtitle(StoryConfig.openingSubtitles[1], 4000);
-    }, 4000);
+    }, 2800);
 
     const t2 = window.setTimeout(() => {
       this.overlay.setSubtitle(StoryConfig.openingSubtitles[2], 4200);
       this.isTransitioning = true;
-    }, 8500);
+    }, 5600);
 
     const t3 = window.setTimeout(() => {
       this.overlay.disableTimeTravelEffects();
-      this.onComplete();
-    }, 13000);
+      this.overlay.clearSubtitle();
+      this.prelude = new MemoryPrelude();
+      this.prelude.show(() => this.onComplete());
+    }, 9000);
 
     this.timerIds.push(t1, t2, t3);
   }
@@ -156,7 +197,9 @@ export class TimeTravelScene implements IScene {
 
       // Z moves backwards towards camera
       pos[i * 3 + 2] += delta * (this.isTransitioning ? 12.0 : 4.0);
-      if (pos[i * 3 + 2] > 2) {
+      // Keep idle stars behind the painted moon; foreground streaks are only
+      // released after the player starts the rewind.
+      if (pos[i * 3 + 2] > (this.isTransitioning ? 2 : -15)) {
         pos[i * 3 + 2] = -35;
       }
     }
@@ -173,5 +216,7 @@ export class TimeTravelScene implements IScene {
     this.timerIds = [];
     this.overlay.disableTimeTravelEffects();
     this.overlay.clearSubtitle();
+    this.prelude?.destroy();
+    this.prelude = null;
   }
 }

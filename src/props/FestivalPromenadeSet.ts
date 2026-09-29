@@ -113,6 +113,7 @@ export class FestivalPromenadeSet {
   private readonly splitCrowd: THREE.Group[] = [];
   private readonly farCrowd: THREE.InstancedMesh;
   private crowdMotion = 0;
+  private crowdApproach = 0;
   private separationElapsed = -1;
   private readonly memoryPetals: THREE.Group[] = [];
   private readonly flowerMaterials: THREE.MeshStandardMaterial[] = [];
@@ -200,15 +201,15 @@ export class FestivalPromenadeSet {
 
     // Split crowd along route A and route B
     for (const routeId of [Phase6RouteId.host, Phase6RouteId.guest]) {
-      for (let i = 0; i < 8; i++) {
+      for (let i = 0; i < 14; i++) {
         const route = PHASE6_ROUTES[routeId];
-        const t = 0.15 + i * 0.08;
+        const t = 0.08 + i * 0.064;
         const p = route.getPointAt(t);
         const tangent = route.getTangentAt(t);
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-        p.addScaledVector(normal, i % 2 ? -2.8 : 2.8);
+        p.addScaledVector(normal, i % 2 ? -2.6 : 2.6);
         const actor = this.silhouette(p.x, p.z, 0.7 + (i % 4) * 0.13,
-          i % 3 ? 0x27344b : 0x4a394b, i % 3 === 0 ? 'star' : i % 3 === 1 ? 'round' : 'none');
+          i % 3 ? 0x27344b : 0x4a394b, i % 5 === 0 ? 'star' : i % 5 === 1 ? 'round' : 'none');
         actor.visible = false; this.splitCrowd.push(actor); this.group.add(actor);
       }
     }
@@ -228,10 +229,6 @@ export class FestivalPromenadeSet {
     // Occlusion band crossing at separation checkpoint (136, -54)
     for (let row = 0; row < 3; row++) {
       const band = new THREE.Group();
-      const crossingSheet = this.crowdKit.createCrossingSheet();
-      crossingSheet.scale.multiplyScalar(row === 1 ? 1.05 : 0.88);
-      crossingSheet.position.set(0.1, 0.02, row * 0.2);
-      band.add(crossingSheet);
       for (let i = 0; i < 6; i++) {
         const visitor = this.silhouette((i % 2) * 0.65, (i - 2.5) * 1.1,
           i % 3 === 0 ? 0.76 : 0.96, i % 2 ? 0x222f43 : 0x433640,
@@ -515,7 +512,17 @@ export class FestivalPromenadeSet {
 
   private buildGuidanceLights(): void {
     const material = new THREE.MeshBasicMaterial({ color: 0xffd27a });
-    const geometry = new THREE.SphereGeometry(0.065, 7, 5);
+    const geometry = new THREE.SphereGeometry(0.085, 7, 5);
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const context = canvas.getContext('2d')!;
+    const gradient = context.createRadialGradient(32, 32, 1, 32, 32, 31);
+    gradient.addColorStop(0, 'rgba(255,247,195,1)');
+    gradient.addColorStop(0.23, 'rgba(255,206,112,.8)');
+    gradient.addColorStop(1, 'rgba(255,185,80,0)');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 64, 64);
+    const texture = new THREE.CanvasTexture(canvas);
     for (const [routeId, group] of [
       [Phase6RouteId.hostRejoin, this.hostGuide],
       [Phase6RouteId.guestRejoin, this.guestGuide]
@@ -529,18 +536,15 @@ export class FestivalPromenadeSet {
           0.85 + (i % 3) * 0.17, p.z + Math.cos(i * 2) * 0.34);
         mote.userData.baseY = mote.position.y;
         group.add(mote);
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: texture, transparent: true, opacity: 0.45, depthWrite: false
+        }));
+        halo.position.copy(mote.position);
+        halo.scale.set(0.34, 0.34, 1);
+        halo.userData.baseY = halo.position.y;
+        group.add(halo);
       }
     }
-    const canvas = document.createElement('canvas');
-    canvas.width = canvas.height = 64;
-    const context = canvas.getContext('2d')!;
-    const gradient = context.createRadialGradient(32, 32, 1, 32, 32, 31);
-    gradient.addColorStop(0, 'rgba(255,247,195,1)');
-    gradient.addColorStop(0.23, 'rgba(255,206,112,.8)');
-    gradient.addColorStop(1, 'rgba(255,185,80,0)');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, 64, 64);
-    const texture = new THREE.CanvasTexture(canvas);
     this.reunionBeacon = new THREE.Sprite(new THREE.SpriteMaterial({
       map: texture, transparent: true, opacity: 0.43, depthWrite: false
     }));
@@ -946,9 +950,14 @@ export class FestivalPromenadeSet {
 
   public setCrowdDensity(progress: number, shared = true): void {
     const density = THREE.MathUtils.clamp((progress - 0.22) / 0.7, 0, 1);
+    if (shared && this.separationElapsed < 0) {
+      this.crowdApproach = THREE.MathUtils.clamp((progress - 0.77) / 0.19, 0, 1);
+    }
     this.midCrowd.forEach((actor, i) => { actor.visible = shared && i < 4 + Math.floor(density * 18); });
     this.nearCrowd.forEach((actor, i) => { actor.visible = shared && i < Math.floor(density * 8); });
-    this.splitCrowd.forEach((actor, i) => { actor.visible = density > 0.72 && i < Math.floor(density * 16); });
+    this.splitCrowd.forEach((actor, i) => {
+      actor.visible = shared ? density > 0.72 && i < Math.floor(density * 16) : true;
+    });
     this.farCrowd.count = shared ? Math.floor(density * 56) : 0;
   }
 
@@ -1009,12 +1018,23 @@ export class FestivalPromenadeSet {
         if (arm) arm.rotation.z = Math.sin(time * 1.5 + i) * 0.085;
       });
     }
-    if (this.separationElapsed < 0) return;
+    if (this.separationElapsed < 0) {
+      // The same three paper crowd sheets drift across the sightline before
+      // the route divides; the other lantern disappears only after this swell.
+      this.crossingGroups.forEach((band, i) => {
+        const u = THREE.MathUtils.clamp((this.crowdApproach - i * 0.13) / 0.74, 0, 1);
+        band.visible = u > 0.02;
+        band.position.x = 134 + i * 2.2 + (1 - u) * 2.5;
+        band.position.z = -57 - i * 1.2 + u * 8;
+      });
+      return;
+    }
     this.separationElapsed += delta;
     this.crossingGroups.forEach((band, i) => {
       const u = THREE.MathUtils.clamp((this.separationElapsed - i * 0.22) / 1.3, 0, 1);
       band.visible = u > 0 && u < 1;
-      band.position.z = -47 - i * 1.2 - u * 16;
+      band.position.x = 134 + i * 2.2 - u * 7;
+      band.position.z = -49 - i * 1.2 + u * 5;
     });
   }
 

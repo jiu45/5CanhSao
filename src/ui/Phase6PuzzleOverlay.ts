@@ -21,7 +21,7 @@ export class Phase6PuzzleOverlay {
         color:#fff0d3; background:linear-gradient(180deg,rgba(15,22,36,.83),rgba(29,29,43,.91));
         border:1px solid rgba(248,205,127,.43); border-radius:19px; padding:18px 22px;
         box-shadow:0 18px 58px rgba(0,0,0,.5),inset 0 1px rgba(255,240,201,.1);
-        font-family:Georgia,'Times New Roman',serif; text-align:center; }
+        font-family:'Segoe UI',system-ui,Arial,sans-serif; text-align:center; }
       .phase6-keepsake h2 { margin:0 0 7px; font-size:21px; font-weight:400;
         letter-spacing:.035em; color:#ffe4ae; }
       .phase6-keepsake p { margin:5px 0 12px; line-height:1.42; font-size:15px; }
@@ -152,12 +152,14 @@ export class Phase6PuzzleOverlay {
       this.paragraph('Lắng nghe người bên kia kể về tấm ảnh. Chọn ký ức mà bạn nghĩ người ấy đang thấy.');
       if (state.memoryFeedback) this.paragraph(state.memoryFeedback);
       const choices = document.createElement('div'); choices.className = 'choices';
-      round.choiceCardIds.forEach(id => {
+      round.choiceCardIds.forEach((id, index) => {
         const card = deck.cards.find(item => item.id === id)!;
         const button = document.createElement('button'); button.type = 'button';
         button.className = 'memory-card'; button.dataset.cardId = id;
         const img = document.createElement('img'); img.src = card.imageSrc; img.alt = card.alt || card.caption || '';
-        const label = document.createElement('span'); label.textContent = card.caption || 'Ký ức';
+        // Names/captions would let the pair solve this by reading an answer
+        // instead of sharing what they see in the real photograph.
+        const label = document.createElement('span'); label.textContent = `Tấm ảnh ${index + 1}`;
         button.append(img, label);
         button.addEventListener('click', () => this.onMemoryChoice(id)); choices.appendChild(button);
       });

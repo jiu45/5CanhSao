@@ -192,7 +192,7 @@ export class ElectricSwitchOverlay {
         transform: translateY(24px) scale(0.95);
         transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         perspective: 800px;
-        font-family: 'Cinzel', 'Playfair Display', serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         user-select: none;
         -webkit-user-select: none;
       }
@@ -236,7 +236,7 @@ export class ElectricSwitchOverlay {
         text-shadow: 0 1px 1px rgba(0, 0, 0, 0.9), 0 0 10px rgba(244, 196, 102, 0.4);
       }
       .switch-subtitle {
-        font-family: 'Quicksand', sans-serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 0.68rem;
         letter-spacing: 0.08em;
         color: #9cb1d4;
@@ -258,7 +258,7 @@ export class ElectricSwitchOverlay {
         flex-direction: column;
         justify-content: space-between;
         height: 52px;
-        font-family: 'Cinzel', serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 0.72rem;
         font-weight: 600;
         color: #8da2c0;
@@ -360,7 +360,7 @@ export class ElectricSwitchOverlay {
       }
 
       .led-subtext {
-        font-family: 'Quicksand', sans-serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 0.62rem;
         font-weight: 600;
         letter-spacing: 0.05em;
@@ -369,7 +369,7 @@ export class ElectricSwitchOverlay {
 
       /* Helper Prompt */
       .switch-prompt-helper {
-        font-family: 'Quicksand', sans-serif;
+        font-family: 'Segoe UI', system-ui, Arial, sans-serif;
         font-size: 0.76rem;
         color: #cbd5e1;
         margin: 0;
