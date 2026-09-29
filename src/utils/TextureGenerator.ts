@@ -1807,7 +1807,7 @@ export class TextureGenerator {
   }
 
   // 20. Authentic Vietnamese Traditional Lion Head (Đầu Lân Rực Rỡ Dân Gian)
-  public static createLionHeadTexture(): THREE.CanvasTexture {
+  public static createLionHeadTexture(blinked = false): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
@@ -1901,37 +1901,51 @@ export class TextureGenerator {
       ctx.lineWidth = 3;
       ctx.stroke();
 
-      // Almond white sclera
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.ellipse(cx + ex, cy - 12, 34, 25, tilt, 0, Math.PI * 2);
-      ctx.fill();
+      if (blinked) {
+        // A closed, curved eye painted *inside* the same paper face. No red
+        // rectangle is ever placed in front of the lion during drum hits.
+        ctx.fillStyle = '#a8322c';
+        ctx.beginPath();
+        ctx.ellipse(cx + ex, cy - 12, 33, 24, tilt, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff0cb'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(cx + ex - 27, cy - 10);
+        ctx.quadraticCurveTo(cx + ex, cy + 5, cx + ex + 27, cy - 11);
+        ctx.stroke();
+      } else {
+        // Almond white sclera
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(cx + ex, cy - 12, 34, 25, tilt, 0, Math.PI * 2);
+        ctx.fill();
 
-      // Deep amber-gold lacquer iris
-      ctx.fillStyle = '#b45309';
-      ctx.beginPath();
-      ctx.ellipse(cx + ex, cy - 12, 21, 23, 0, 0, Math.PI * 2);
-      ctx.fill();
+        // Deep amber-gold lacquer iris
+        ctx.fillStyle = '#b45309';
+        ctx.beginPath();
+        ctx.ellipse(cx + ex, cy - 12, 21, 23, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-      // Shimmering gold inner ring
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.arc(cx + ex, cy - 12, 16, 0, Math.PI * 2);
-      ctx.stroke();
+        // Shimmering gold inner ring
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(cx + ex, cy - 12, 16, 0, Math.PI * 2);
+        ctx.stroke();
 
-      // Deep obsidian pupil
-      ctx.fillStyle = '#0f172a';
-      ctx.beginPath();
-      ctx.ellipse(cx + ex, cy - 12, 12, 15, 0, 0, Math.PI * 2);
-      ctx.fill();
+        // Deep obsidian pupil
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.ellipse(cx + ex, cy - 12, 12, 15, 0, 0, Math.PI * 2);
+        ctx.fill();
 
-      // Double sparkling catchlights (ánh mắt có hồn)
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(cx + ex - 5, cy - 17, 5.5, 0, Math.PI * 2);
-      ctx.arc(cx + ex + 4, cy - 7, 2.8, 0, Math.PI * 2);
-      ctx.fill();
+        // Double sparkling catchlights (ánh mắt có hồn)
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cx + ex - 5, cy - 17, 5.5, 0, Math.PI * 2);
+        ctx.arc(cx + ex + 4, cy - 7, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       // Curving bushy white eyebrows (Lông mày trắng quý phái)
       ctx.strokeStyle = '#f8fafc';

@@ -738,8 +738,9 @@ export class ModernArrivalScene implements IScene {
     ];
 
     visitorPlacements.forEach((vp, index) => {
+      const props = ['balloon', 'phone', 'round', 'none'] as const;
       const visitor = this.crowdKit.createActor(vp.x, vp.z, vp.scale,
-        0x26364b, index % 2 ? 'round' : 'star');
+        0x26364b, props[index], true);
       this.modernArrivalGroup.add(visitor);
       this.parkVisitorMeshes.push(visitor);
     });
@@ -1285,7 +1286,10 @@ export class ModernArrivalScene implements IScene {
 
     // 3. Contemporary visitors gentle strolling animation
     this.parkVisitorMeshes.forEach((mesh, idx) => {
-      mesh.position.y += Math.sin(time * 3.2 + idx * 1.5) * 0.0018;
+      mesh.position.set(mesh.userData.baseX + Math.sin(time * .65 + idx * 1.5) * .10,
+        Math.sin(time * 2.1 + idx) * .025,
+        mesh.userData.baseZ + Math.cos(time * .55 + idx) * .06);
+      this.crowdKit.animateActor(mesh as THREE.Group, time, idx * .8);
     });
 
     // 4. Giant Moon Sculpture radiant breathing pulse & gentle rotation
@@ -1364,6 +1368,7 @@ export class ModernArrivalScene implements IScene {
       this.scene.remove(this.modernArrivalGroup);
       disposeSceneResources(this.modernArrivalGroup);
     }
+    this.crowdKit.dispose();
 
     if (this.distantFestivalGroup) {
       this.scene.remove(this.distantFestivalGroup);

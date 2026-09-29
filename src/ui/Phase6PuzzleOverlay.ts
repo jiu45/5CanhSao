@@ -67,12 +67,11 @@ export class Phase6PuzzleOverlay {
       .phase6-keepsake .memory-card img { width:100%; height:122px; object-fit:cover;
         object-position:center; background:#ddd1bb; }
       .phase6-keepsake .memory-card span { font-size:14px; line-height:1.2; }
-      .phase6-keepsake .featured { width:min(280px,95%); margin:9px auto; padding:9px 9px 17px;
+      .phase6-keepsake .featured { width:min(280px,95%); margin:9px auto; padding:9px 9px 12px;
         background:#f3e9d5; color:#493f39; transform:rotate(-1.5deg);
         box-shadow:0 12px 28px rgba(0,0,0,.45); }
       .phase6-keepsake .featured img { width:100%; height:182px; object-fit:cover; display:block;
         background:#ddd1bb; }
-      .phase6-keepsake .featured small { color:#5b4b40; }
       .phase6-keepsake small { display:block; margin-top:10px; color:#ebcf9c; }
       @media(max-width:680px) {
         .phase6-keepsake {padding:13px 15px;}
@@ -145,21 +144,18 @@ export class Phase6PuzzleOverlay {
       const card = deck.cards.find(item => item.id === round.targetCardId)!;
       const frame = document.createElement('div'); frame.className = 'featured';
       const img = document.createElement('img'); img.src = card.imageSrc; img.alt = card.alt || card.caption || '';
-      frame.appendChild(img);
-      const caption = document.createElement('small'); caption.textContent = card.caption || '';
-      frame.appendChild(caption); this.root.appendChild(frame);
+      frame.appendChild(img); this.root.appendChild(frame);
     } else {
       this.paragraph('Lắng nghe người bên kia kể về tấm ảnh. Chọn ký ức mà bạn nghĩ người ấy đang thấy.');
       if (state.memoryFeedback) this.paragraph(state.memoryFeedback);
       const choices = document.createElement('div'); choices.className = 'choices';
-      round.choiceCardIds.forEach((id, index) => {
+      round.choiceCardIds.forEach(id => {
         const card = deck.cards.find(item => item.id === id)!;
         const button = document.createElement('button'); button.type = 'button';
         button.className = 'memory-card'; button.dataset.cardId = id;
         const img = document.createElement('img'); img.src = card.imageSrc; img.alt = card.alt || card.caption || '';
-        // Names/captions would let the pair solve this by reading an answer
-        // instead of sharing what they see in the real photograph.
-        const label = document.createElement('span'); label.textContent = `Tấm ảnh ${index + 1}`;
+        const label = document.createElement('span');
+        label.textContent = card.caption?.trim() || 'Ký ức chưa đặt tên';
         button.append(img, label);
         button.addEventListener('click', () => this.onMemoryChoice(id)); choices.appendChild(button);
       });

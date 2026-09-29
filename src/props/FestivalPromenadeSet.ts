@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { INNER_GATE_POSITION, PHASE6_ROUTES, Phase6RouteId } from '../scenes/Phase6Routes';
-import { PresentCrowdKit } from './papercraft/PresentCrowdKit';
+import { PresentCrowdKit, type VisitorProp } from './papercraft/PresentCrowdKit';
 import { PapercraftFoliageKit } from './papercraft/PapercraftFoliageKit';
 import { MarketStallKit } from './papercraft/MarketStallKit';
 import { CeremonialCharacterKit } from './papercraft/CeremonialCharacterKit';
@@ -129,7 +129,7 @@ export class FestivalPromenadeSet {
   private readonly roadTexture = pavingTexture();
 
   private silhouette(x: number, z: number, scale = 1, color = 0x23344d,
-    prop: 'none' | 'star' | 'balloon' | 'round' = 'none', detailed = false): THREE.Group {
+    prop: VisitorProp = 'none', detailed = false): THREE.Group {
     return this.crowdKit.createActor(x, z, scale, color, prop, detailed);
   }
 
@@ -186,16 +186,18 @@ export class FestivalPromenadeSet {
       const t = 0.3 + (i / 22) * 0.68;
       const p = PHASE6_ROUTES.route_shared.getPointAt(t);
       const side = i % 2 === 0 ? 5 + (i % 3) : -5 - (i % 3);
+      const props: VisitorProp[] = ['none', 'phone', 'round', 'balloon', 'none', 'star', 'round'];
       const actor = this.silhouette(p.x + side * 0.4, p.z + side * 0.7,
         0.75 + (i % 4) * 0.1, i % 3 === 0 ? 0x483746 : 0x26364b,
-        i % 4 === 0 ? 'round' : i % 4 === 1 ? 'star' : 'none');
+        props[i % props.length], i % 5 === 0);
       actor.visible = false;
       this.midCrowd.push(actor); this.group.add(actor);
     }
     for (let i = 0; i < 8; i++) {
+      const props: VisitorProp[] = ['balloon', 'phone', 'round', 'none', 'none', 'balloon', 'phone', 'round'];
       const actor = this.silhouette(130 + (i % 4) * 2.8, -48 - Math.floor(i / 4) * 8,
         i % 3 === 0 ? 0.72 : 1, i % 4 === 0 ? 0x4c3949 : 0x263449,
-        i % 3 === 0 ? 'star' : i % 3 === 1 ? 'balloon' : 'round', true);
+        props[i], true);
       actor.visible = false; this.nearCrowd.push(actor); this.group.add(actor);
     }
 
@@ -208,8 +210,9 @@ export class FestivalPromenadeSet {
         const tangent = route.getTangentAt(t);
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
         p.addScaledVector(normal, i % 2 ? -2.6 : 2.6);
+        const props: VisitorProp[] = ['none', 'phone', 'round', 'none', 'balloon', 'star', 'none'];
         const actor = this.silhouette(p.x, p.z, 0.7 + (i % 4) * 0.13,
-          i % 3 ? 0x27344b : 0x4a394b, i % 5 === 0 ? 'star' : i % 5 === 1 ? 'round' : 'none');
+          i % 3 ? 0x27344b : 0x4a394b, props[i % props.length], i % 7 === 0);
         actor.visible = false; this.splitCrowd.push(actor); this.group.add(actor);
       }
     }
@@ -230,9 +233,10 @@ export class FestivalPromenadeSet {
     for (let row = 0; row < 3; row++) {
       const band = new THREE.Group();
       for (let i = 0; i < 6; i++) {
+        const props: VisitorProp[] = ['none', 'balloon', 'phone', 'none', 'round', 'star'];
         const visitor = this.silhouette((i % 2) * 0.65, (i - 2.5) * 1.1,
           i % 3 === 0 ? 0.76 : 0.96, i % 2 ? 0x222f43 : 0x433640,
-          i === 1 || i === 4 ? 'star' : 'none');
+          props[i]);
         band.add(visitor);
       }
       band.position.set(134 + row * 2.2, 0.02, -52 - row * 1.2);
@@ -1014,8 +1018,7 @@ export class FestivalPromenadeSet {
         actor.position.x = actor.userData.baseX + Math.sin(time * pace + i * 2.4) * 0.32;
         actor.position.z = actor.userData.baseZ + Math.cos(time * pace * 0.7 + i) * 0.16;
         actor.position.y = Math.sin(time * 2.1 + i) * 0.035;
-        const arm = actor.userData.arm as THREE.Group | undefined;
-        if (arm) arm.rotation.z = Math.sin(time * 1.5 + i) * 0.085;
+        this.crowdKit.animateActor(actor, time, i * 0.73);
       });
     }
     if (this.separationElapsed < 0) {
@@ -1026,6 +1029,7 @@ export class FestivalPromenadeSet {
         band.visible = u > 0.02;
         band.position.x = 134 + i * 2.2 + (1 - u) * 2.5;
         band.position.z = -57 - i * 1.2 + u * 8;
+        band.children.forEach((visitor, j) => this.crowdKit.animateActor(visitor as THREE.Group, time, i + j * .6));
       });
       return;
     }
@@ -1085,5 +1089,6 @@ export class FestivalPromenadeSet {
     textures.add(this.roadTexture);
     geometries.forEach(geometry => geometry.dispose());
     textures.forEach(texture => texture.dispose());
+    this.crowdKit.dispose();
   }
 }

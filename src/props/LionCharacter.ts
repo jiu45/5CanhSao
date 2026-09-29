@@ -25,7 +25,9 @@ export class LionCharacter {
   public group: THREE.Group;
   public headGroup: THREE.Group;
   public bodySegments: THREE.Group[] = [];
-  private eyelids: THREE.Mesh[] = [];
+  private headMaterial: THREE.MeshBasicMaterial;
+  private openHeadTexture: THREE.CanvasTexture;
+  private blinkHeadTexture: THREE.CanvasTexture;
   private ears: THREE.Group[] = [];
   private tail: THREE.Mesh;
   private ribbon: THREE.Mesh;
@@ -90,33 +92,18 @@ export class LionCharacter {
     this.headGroup = new THREE.Group();
     this.headGroup.position.set(0, 1.42, 0.65);
 
-    const headTex = TextureGenerator.createLionHeadTexture();
+    this.openHeadTexture = TextureGenerator.createLionHeadTexture();
+    this.blinkHeadTexture = TextureGenerator.createLionHeadTexture(true);
     const headGeo = new THREE.PlaneGeometry(2.1, 2.1);
     const headMat = new THREE.MeshBasicMaterial({
-      map: headTex,
+      map: this.openHeadTexture,
       transparent: true,
       opacity: 0.98,
       side: THREE.DoubleSide
     });
+    this.headMaterial = headMat;
     const headMesh = new THREE.Mesh(headGeo, headMat);
     this.headGroup.add(headMesh);
-
-    // Mechanical Eyelids that slide over almond eyes (Traditional Vietnamese Craft)
-    // Eyelids slide down over the eye pupils and snap open to drum beats!
-    const eyelidGeo = new THREE.PlaneGeometry(0.28, 0.18);
-    const eyelidMat = new THREE.MeshBasicMaterial({
-      color: 0x991b1b,
-      transparent: true,
-      opacity: 0.98
-    });
-    [-0.30, 0.30].forEach(ex => {
-      const eyelid = new THREE.Mesh(eyelidGeo, eyelidMat.clone());
-      eyelid.position.set(ex, 0.14, 0.025);
-      eyelid.scale.set(1.0, 0.001, 1.0);
-      eyelid.visible = false; // Never render the red plane over an open eye.
-      this.headGroup.add(eyelid);
-      this.eyelids.push(eyelid);
-    });
 
     // Traditional Fan/Leaf Shaped Ears with Golden Fur Trim
     [-0.70, 0.70].forEach((earX, idx) => {
@@ -403,13 +390,10 @@ export class LionCharacter {
       }
     }
 
-    // One 100 ms closing/opening gesture, with no residual red strip at rest.
+    // One 100 ms painted-eye gesture; the face has no separate lid geometry.
     const blinkAmount = this.isBlinking ? Math.sin(this.blinkProgress * Math.PI) : 0;
-    this.eyelids.forEach(lid => {
-      lid.visible = blinkAmount > 0.01;
-      lid.scale.y = Math.max(0.001, blinkAmount);
-      lid.position.y = 0.08 - blinkAmount * 0.13;
-    });
+    const headTexture = blinkAmount > 0.55 ? this.blinkHeadTexture : this.openHeadTexture;
+    if (this.headMaterial.map !== headTexture) this.headMaterial.map = headTexture;
 
     // -------------------------------------------------------------------------
     // 2. Twitching Ears (Nhấp nháy tai theo nhịp trống)
@@ -638,6 +622,8 @@ export class LionCharacter {
   }
 
   public destroy() {
+    this.openHeadTexture.dispose();
+    this.blinkHeadTexture.dispose();
     this.particles.forEach(p => {
       this.group.parent?.remove(p.mesh);
       p.mesh.geometry.dispose();

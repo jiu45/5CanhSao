@@ -5,6 +5,7 @@ import { StoryOverlay } from '../ui/StoryOverlay';
 import { StoryConfig } from '../config/StoryConfig';
 import { audioManager } from '../audio/AudioManager';
 import { MemoryPrelude } from '../ui/MemoryPrelude';
+import { DedicationPage } from '../ui/DedicationPage';
 
 export class TimeTravelScene implements IScene {
   public scene: THREE.Scene;
@@ -23,6 +24,7 @@ export class TimeTravelScene implements IScene {
   private rotSpeeds: Float32Array;
   private timerIds: number[] = [];
   private prelude: MemoryPrelude | null = null;
+  private dedication: DedicationPage | null = null;
 
   constructor(camera: THREE.PerspectiveCamera, overlay: StoryOverlay,
     onComplete: () => void, private readonly onSequenceStarted?: () => void) {
@@ -134,8 +136,14 @@ export class TimeTravelScene implements IScene {
     this.stateTime = 0;
     this.isTransitioning = false;
 
-    // Show initial title with sepia and film grain
+    // The first leaf belongs to the recipient; the title follows its turn.
     this.overlay.enableTimeTravelEffects();
+    this.dedication = new DedicationPage();
+    this.dedication.show(() => this.showOpeningTitle());
+  }
+
+  private showOpeningTitle(): void {
+    this.dedication = null;
     this.overlay.showStartScreen(
       "KÝ ỨC ĐÈN ÔNG SAO",
       StoryConfig.cinematicPeriodTitle,
@@ -218,5 +226,7 @@ export class TimeTravelScene implements IScene {
     this.overlay.clearSubtitle();
     this.prelude?.destroy();
     this.prelude = null;
+    this.dedication?.destroy();
+    this.dedication = null;
   }
 }
