@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
-import { createLanternArtTexture } from './LanternSilhouetteArt';
+import { createLanternArtTexture, createLanternCoreTexture } from './LanternSilhouetteArt';
 import type { LanternStyle } from './LanternIdentity';
 
 export class StarLantern {
   public group: THREE.Group;
   public readonly style: LanternStyle;
   private shapedPaperMat?: THREE.MeshBasicMaterial;
+  private shapedCoreMat?: THREE.MeshBasicMaterial;
+  private readonly shapedCoreStrength: number;
+  private readonly candleIntensityScale: number;
   private shapedGlowMat?: THREE.MeshBasicMaterial;
   private shapedTextures: THREE.CanvasTexture[] = [];
   
@@ -46,6 +49,8 @@ export class StarLantern {
 
   constructor(style: LanternStyle = 'star') {
     this.style = style;
+    this.shapedCoreStrength = style === 'rabbit' ? .075 : .13;
+    this.candleIntensityScale = style === 'rabbit' ? .62 : 1;
     this.group = new THREE.Group();
 
     this.bambooSkeletonGroup = new THREE.Group();
@@ -126,6 +131,9 @@ export class StarLantern {
     }
     this.buildBindings();
     this.buildCandle();
+    // The rabbit's belly sits below the shared star origin. Keep both wax and flame
+    // behind the paper instead of letting the flame emerge from its shoulder.
+    if (style === 'rabbit') this.candleGroup.position.set(-0.04, -0.27, 0);
 
     // Warm amber Point Light inside lantern (#f59e0b)
     this.candleLight = new THREE.PointLight(0xf59e0b, 0, 14, 1.8);
@@ -154,12 +162,16 @@ export class StarLantern {
   private buildShapedPapercraft(): void {
     const bamboo = createLanternArtTexture(this.style, false);
     const paper = createLanternArtTexture(this.style, true);
-    this.shapedTextures.push(bamboo, paper);
+    const core = createLanternCoreTexture(this.style);
+    this.shapedTextures.push(bamboo, paper, core);
     const frameMat = new THREE.MeshBasicMaterial({ map: bamboo,
       transparent: true, depthWrite: false, side: THREE.DoubleSide });
     this.shapedPaperMat = new THREE.MeshBasicMaterial({ map: paper,
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
       color: 0xd9c0aa, opacity: .94 });
+    this.shapedCoreMat = new THREE.MeshBasicMaterial({ map: core,
+      transparent: true, depthWrite: false, side: THREE.FrontSide,
+      blending: THREE.AdditiveBlending, opacity: .04 });
     const glowCanvas = document.createElement('canvas');
     glowCanvas.width = glowCanvas.height = 128;
     const ctx = glowCanvas.getContext('2d')!;
@@ -182,6 +194,10 @@ export class StarLantern {
       const skin = new THREE.Mesh(plane, this.shapedPaperMat);
       skin.position.z = z < 0 ? z + .008 : z - .008;
       this.paperSkinGroup.add(skin);
+      const innerLight = new THREE.Mesh(plane, this.shapedCoreMat);
+      innerLight.position.z = z < 0 ? z + .004 : z - .004;
+      if (z < 0) innerLight.rotation.y = Math.PI;
+      this.paperSkinGroup.add(innerLight);
     }
   }
 
@@ -302,6 +318,7 @@ export class StarLantern {
     const waxGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.22, 16);
     const wax = new THREE.Mesh(waxGeo, this.candleWaxMat);
     wax.position.set(0, -0.14, 0);
+    wax.visible = this.style === 'star';
     this.candleGroup.add(wax);
 
     // Wick
@@ -309,6 +326,7 @@ export class StarLantern {
     const wickMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
     const wick = new THREE.Mesh(wickGeo, wickMat);
     wick.position.set(0, -0.02, 0);
+    wick.visible = this.style === 'star';
     this.candleGroup.add(wick);
 
     // Cupped hand mesh shielding the candle
@@ -372,16 +390,19 @@ export class StarLantern {
 
   public ignite() {
     this.isLit = true;
-    this.flameMesh.visible = true;
-    this.candleLight.intensity = 3.6;
+    // The wax and flame sit inside opaque cut-paper silhouettes; their moving
+    // point light is visible through the paper, not as a flame pasted on top.
+    this.flameMesh.visible = this.style === 'star';
+    this.candleLight.intensity = 3.6 * this.candleIntensityScale;
     
     // Boost paper translucency and warm golden bloom (#f59e0b)
     this.paperRedMat.emissive.setHex(0xff3d00);
     this.paperRedMat.emissiveIntensity = 1.1;
     this.paperYellowMat.emissive.setHex(0xf59e0b);
     this.paperYellowMat.emissiveIntensity = 1.6;
-    if (this.shapedPaperMat) this.shapedPaperMat.color.setHex(0xfff1d4);
-    if (this.shapedGlowMat) this.shapedGlowMat.opacity = .72;
+    if (this.shapedPaperMat) this.shapedPaperMat.color.setHex(0xffffff);
+    if (this.shapedCoreMat) this.shapedCoreMat.opacity = this.shapedCoreStrength;
+    if (this.shapedGlowMat) this.shapedGlowMat.opacity = .42;
   }
 
   public extinguish(): void {
@@ -392,6 +413,7 @@ export class StarLantern {
     this.paperRedMat.emissiveIntensity = 0.04;
     this.paperYellowMat.emissiveIntensity = 0.05;
     if (this.shapedPaperMat) this.shapedPaperMat.color.setHex(0x80736e);
+    if (this.shapedCoreMat) this.shapedCoreMat.opacity = .04;
     if (this.shapedGlowMat) this.shapedGlowMat.opacity = .06;
   }
 
@@ -400,7 +422,7 @@ export class StarLantern {
     if (modern) {
       this.isLit = true;
       this.flameMesh.visible = false; // Candle flame replaced by internal warm LED electric core
-      this.candleLight.intensity = 3.8;
+      this.candleLight.intensity = 3.8 * this.candleIntensityScale;
       this.candleLight.color.setHex(0xffb833);
       this.candleLight.distance = 12;
 
@@ -426,6 +448,7 @@ export class StarLantern {
         this.shapedPaperMat.opacity = .98;
       }
       if (this.shapedGlowMat) this.shapedGlowMat.opacity = .78;
+      if (this.shapedCoreMat) this.shapedCoreMat.opacity = this.shapedCoreStrength;
     }
   }
 
@@ -433,10 +456,11 @@ export class StarLantern {
     if (!this.isModern) return;
     this.isLit = lit;
     this.flameMesh.visible = false;
-    this.candleLight.intensity = lit ? 3.8 : 0.12;
+    this.candleLight.intensity = (lit ? 3.8 : 0.12) * this.candleIntensityScale;
     this.paperRedMat.emissiveIntensity = lit ? 1.35 : 0.15;
     this.paperYellowMat.emissiveIntensity = lit ? 1.65 : 0.2;
     if (this.shapedPaperMat) this.shapedPaperMat.color.setHex(lit ? 0xffffff : 0x807975);
+    if (this.shapedCoreMat) this.shapedCoreMat.opacity = lit ? this.shapedCoreStrength : .04;
     if (this.shapedGlowMat) this.shapedGlowMat.opacity = lit ? .78 : .1;
   }
 
@@ -452,10 +476,11 @@ export class StarLantern {
       const alpha = Math.max(0.0, 1.0 - progress);
       const lightFactor = alpha * alpha;
 
-      this.candleLight.intensity = (2.8 * lightFactor);
+      this.candleLight.intensity = 2.8 * lightFactor * this.candleIntensityScale;
       this.paperRedMat.opacity = 0.85 * alpha;
       this.paperYellowMat.opacity = 0.85 * alpha;
       if (this.shapedPaperMat) this.shapedPaperMat.opacity = .94 * alpha;
+      if (this.shapedCoreMat) this.shapedCoreMat.opacity = this.shapedCoreStrength * alpha;
       if (this.shapedGlowMat) this.shapedGlowMat.opacity = .7 * alpha;
       this.bambooMat.opacity = alpha;
       this.bambooMat.transparent = true;
@@ -472,8 +497,9 @@ export class StarLantern {
     if (this.isModern) {
       this.modernGlowTime += delta * 2.2;
       const breathingPulse = Math.sin(this.modernGlowTime) * 0.12;
-      this.candleLight.intensity = 3.8 + breathingPulse;
+      this.candleLight.intensity = (3.8 + breathingPulse) * this.candleIntensityScale;
       if (this.shapedPaperMat) this.shapedPaperMat.opacity = .95 + breathingPulse * .12;
+      if (this.shapedCoreMat) this.shapedCoreMat.opacity = this.shapedCoreStrength * (1 + breathingPulse * .2);
       if (this.shapedGlowMat) this.shapedGlowMat.opacity = .72 + breathingPulse * .26;
       return;
     }
@@ -499,12 +525,12 @@ export class StarLantern {
 
     const flicker = Math.sin(this.flameTime * 1.8) * 0.18 + Math.cos(this.flameTime * 4.2) * 0.12;
     const windGlow = Math.max(0.12, 1 - clampedWind * 0.72);
-    this.candleLight.intensity = (2.8 + flicker * 0.7) * Math.max(0.2, 1 - clampedWind * 0.62);
+    this.candleLight.intensity = (2.8 + flicker * 0.7) * Math.max(0.2, 1 - clampedWind * 0.62) * this.candleIntensityScale;
     this.paperRedMat.emissiveIntensity = 1.1 * windGlow;
     this.paperYellowMat.emissiveIntensity = 1.6 * windGlow;
-    if (this.shapedPaperMat) this.shapedPaperMat.color.setRGB(
-      windGlow, .77 * windGlow + .15, .58 * windGlow + .28);
-    if (this.shapedGlowMat) this.shapedGlowMat.opacity = .7 * windGlow;
+    if (this.shapedPaperMat) this.shapedPaperMat.color.setScalar(windGlow);
+    if (this.shapedCoreMat) this.shapedCoreMat.opacity = this.shapedCoreStrength * (1 + flicker * .16) * windGlow;
+    if (this.shapedGlowMat) this.shapedGlowMat.opacity = (.42 + flicker * .06) * windGlow;
     this.candleLight.position.x = Math.sin(this.flameTime * 2.2) * 0.012 - clampedWind * 0.03;
     this.candleLight.position.y = Math.cos(this.flameTime * 2.8) * 0.01 - clampedWind * 0.02;
 

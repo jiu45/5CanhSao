@@ -10,10 +10,19 @@ export function drawLanternSilhouette(style: LanternStyle, paper: boolean): HTML
 
   const bamboo = '#d1a363';
   const fineBamboo = '#f3cc88';
-  const fill = (path: Path2D, top: string, bottom: string, line = 12) => {
+  const fill = (path: Path2D, top: string, bottom: string, line = 12,
+    warmth?: { x: number; y: number; radius: number; core: string; rim: string }) => {
     if (paper) {
-      const wash = c.createLinearGradient(105, 105, 430, 410);
-      wash.addColorStop(0, top); wash.addColorStop(1, bottom);
+      const wash = warmth
+        ? c.createRadialGradient(warmth.x, warmth.y, 8, warmth.x, warmth.y, warmth.radius)
+        : c.createLinearGradient(105, 105, 430, 410);
+      if (warmth) {
+        wash.addColorStop(0, warmth.core);
+        wash.addColorStop(.48, top);
+        wash.addColorStop(1, warmth.rim);
+      } else {
+        wash.addColorStop(0, top); wash.addColorStop(1, bottom);
+      }
       c.fillStyle = wash; c.fill(path);
     }
     c.strokeStyle = bamboo; c.lineWidth = line; c.stroke(path);
@@ -50,18 +59,21 @@ export function drawLanternSilhouette(style: LanternStyle, paper: boolean): HTML
     tail.quadraticCurveTo(56, 233, 86, 256);
     tail.quadraticCurveTo(56, 283, 58, 361);
     tail.bezierCurveTo(84, 325, 111, 295, 150, 278); tail.closePath();
-    fill(tail, '#faac62', '#b7473f', 13);
+    fill(tail, '#e88764', '#b7473f', 13,
+      { x: 150, y: 260, radius: 150, core: '#ffd582', rim: '#bd4e52' });
     const fin = new Path2D();
     fin.moveTo(176, 210); fin.quadraticCurveTo(217, 128, 270, 139);
     fin.quadraticCurveTo(291, 154, 306, 191); fin.closePath();
-    fill(fin, '#ef8760', '#bf4d46', 10);
+    fill(fin, '#ef8760', '#bf4d46', 10,
+      { x: 230, y: 215, radius: 115, core: '#ffcf79', rim: '#cf5350' });
     const body = new Path2D();
     body.moveTo(122, 255); body.bezierCurveTo(148, 165, 251, 158, 345, 188);
     body.quadraticCurveTo(394, 202, 440, 245);
     body.quadraticCurveTo(451, 259, 438, 272);
     body.bezierCurveTo(357, 347, 208, 363, 140, 294);
     body.quadraticCurveTo(124, 276, 122, 255); body.closePath();
-    fill(body, '#f4b05e', '#e05c3b', 15);
+    fill(body, '#e57849', '#e05c3b', 15,
+      { x: 255, y: 276, radius: 205, core: '#efd17c', rim: '#c94742' });
     const gill = new Path2D(); gill.moveTo(372, 202); gill.quadraticCurveTo(332, 252, 371, 300); rib(gill, 6);
     const spine = new Path2D(); spine.moveTo(153, 253); spine.quadraticCurveTo(259, 203, 354, 253); rib(spine, 5);
     const belly = new Path2D(); belly.moveTo(172, 295); belly.quadraticCurveTo(269, 322, 351, 289); rib(belly, 4);
@@ -83,12 +95,14 @@ export function drawLanternSilhouette(style: LanternStyle, paper: boolean): HTML
       upper.moveTo(255, 260); upper.bezierCurveTo(204, 211, 138, 103, 80, 107);
       upper.bezierCurveTo(48, 119, 48, 214, 91, 249);
       upper.bezierCurveTo(135, 284, 208, 281, 255, 274); upper.closePath();
-      fill(upper, '#f6aa91', '#b94358', 14);
+      fill(upper, '#f5a17f', '#b94358', 14,
+        { x: 253, y: 265, radius: 232, core: '#ffe184', rim: '#d95a70' });
       const lower = new Path2D();
       lower.moveTo(253, 269); lower.bezierCurveTo(196, 284, 128, 263, 99, 286);
       lower.bezierCurveTo(76, 312, 109, 393, 154, 399);
       lower.bezierCurveTo(207, 400, 248, 332, 257, 282); lower.closePath();
-      fill(lower, '#e88d77', '#a83d53', 13);
+      fill(lower, '#ed9473', '#a83d53', 13,
+        { x: 252, y: 269, radius: 193, core: '#ffd778', rim: '#c95161' });
       const ribs = [new Path2D(), new Path2D(), new Path2D()];
       ribs[0].moveTo(250, 266); ribs[0].quadraticCurveTo(139, 192, 78, 120);
       ribs[1].moveTo(244, 269); ribs[1].quadraticCurveTo(131, 246, 68, 208);
@@ -104,7 +118,8 @@ export function drawLanternSilhouette(style: LanternStyle, paper: boolean): HTML
     };
     wing(false); wing(true);
     const body = new Path2D(); body.ellipse(256, 269, 24, 105, 0, 0, Math.PI * 2);
-    fill(body, '#efbb75', '#c9694d', 9);
+    fill(body, '#f9c879', '#c9694d', 9,
+      { x: 256, y: 269, radius: 126, core: '#ffe787', rim: '#df8f61' });
     const antenna = new Path2D();
     antenna.moveTo(250, 177); antenna.quadraticCurveTo(210, 119, 191, 128);
     antenna.moveTo(262, 177); antenna.quadraticCurveTo(302, 119, 321, 128); rib(antenna, 5);
@@ -114,7 +129,8 @@ export function drawLanternSilhouette(style: LanternStyle, paper: boolean): HTML
       const outer = new Path2D();
       outer.moveTo(x - 22, 226); outer.bezierCurveTo(x - 30 + lean, 162, x - 36 + lean, 63, x - 8 + lean, 48);
       outer.bezierCurveTo(x + 22 + lean, 39, x + 31 + lean, 147, x + 24, 225); outer.closePath();
-      fill(outer, '#f6d9bd', '#e99d82', 11);
+      fill(outer, '#dfc4b6', '#cd998e', 11,
+        { x, y: 219, radius: 185, core: '#e9d0b8', rim: '#c99495' });
       if (paper) {
         c.strokeStyle = '#df9289'; c.lineWidth = 10; c.beginPath();
         c.moveTo(x, 189); c.quadraticCurveTo(x + lean, 104, x + lean, 74); c.stroke();
@@ -123,17 +139,20 @@ export function drawLanternSilhouette(style: LanternStyle, paper: boolean): HTML
     };
     ear(323, -16); ear(374, 10);
     const tail = new Path2D(); tail.ellipse(122, 321, 37, 39, 0, 0, Math.PI * 2);
-    fill(tail, '#fae3c5', '#eaab91', 10);
+    fill(tail, '#e5cbaa', '#d6a399', 10,
+      { x: 183, y: 331, radius: 120, core: '#ead1a9', rim: '#c99b96' });
     const body = new Path2D();
     body.moveTo(129, 331); body.bezierCurveTo(143, 267, 211, 239, 285, 262);
     body.bezierCurveTo(357, 280, 376, 349, 351, 390);
     body.quadraticCurveTo(265, 425, 164, 391); body.quadraticCurveTo(112, 372, 129, 331);
-    body.closePath(); fill(body, '#f8e0bd', '#e7a084', 14);
+    body.closePath(); fill(body, '#e7c5a8', '#d99d91', 14,
+      { x: 250, y: 339, radius: 178, core: '#efd394', rim: '#cfa399' });
     const head = new Path2D();
     head.moveTo(281, 252); head.bezierCurveTo(296, 208, 355, 190, 393, 217);
     head.quadraticCurveTo(420, 232, 439, 266); head.quadraticCurveTo(423, 297, 383, 311);
     head.quadraticCurveTo(333, 321, 285, 293); head.closePath();
-    fill(head, '#ffe4c4', '#eead8c', 13);
+    fill(head, '#e5c3ae', '#d6a398', 13,
+      { x: 323, y: 278, radius: 154, core: '#ead1ae', rim: '#cfa19d' });
     rib(new Path2D('M166 343 Q238 294 307 308'), 5);
     rib(new Path2D('M213 263 Q250 338 218 395'), 4);
     rib(new Path2D('M289 269 Q315 323 303 408'), 4);
@@ -152,6 +171,29 @@ export function drawLanternSilhouette(style: LanternStyle, paper: boolean): HTML
 
 export function createLanternArtTexture(style: LanternStyle, paper: boolean): THREE.CanvasTexture {
   const texture = new THREE.CanvasTexture(drawLanternSilhouette(style, paper));
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  return texture;
+}
+
+/** A candle wash clipped to the cut-paper silhouette, so its light lives inside the lantern. */
+export function createLanternCoreTexture(style: LanternStyle): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 512;
+  const c = canvas.getContext('2d')!;
+  const core = style === 'rabbit' ? { x: 250, y: 338, radius: 170 }
+    : style === 'carp' ? { x: 260, y: 275, radius: 190 }
+      : { x: 256, y: 270, radius: 185 };
+  const glow = c.createRadialGradient(core.x, core.y, 8, core.x, core.y, core.radius);
+  glow.addColorStop(0, 'rgba(255,243,160,.84)');
+  glow.addColorStop(.36, 'rgba(255,204,92,.38)');
+  glow.addColorStop(.73, 'rgba(255,129,66,.10)');
+  glow.addColorStop(1, 'rgba(255,129,66,0)');
+  c.fillStyle = glow;
+  c.fillRect(0, 0, 512, 512);
+  c.globalCompositeOperation = 'destination-in';
+  c.drawImage(drawLanternSilhouette(style, true), 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   return texture;
