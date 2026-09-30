@@ -43,7 +43,7 @@ export class ElectricSwitchOverlay {
       <div class="switch-chassis">
         <!-- Elegant Header Typography -->
         <div class="switch-header">
-          <div class="switch-title">ĐÈN ÔNG SAO HIỆN ĐẠI</div>
+          <div class="switch-title">CHIẾC ĐÈN CỦA BẠN</div>
           <div class="switch-subtitle">CÔNG TẮC BÓNG LED</div>
         </div>
 
@@ -61,8 +61,8 @@ export class ElectricSwitchOverlay {
               data-testid="electric-toggle-switch"
               role="switch"
               aria-checked="${this.isOn ? 'true' : 'false'}"
-              aria-label="Công tắc đèn ông sao hiện đại"
-              title="Gạt công tắc đèn ông sao [Phím E]"
+              aria-label="Công tắc đèn lồng của bạn"
+              title="Gạt công tắc đèn lồng [Phím E]"
             >
               <div class="lever-shaft">
                 <div class="lever-knob"></div>

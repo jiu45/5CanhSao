@@ -16,6 +16,7 @@ export interface Phase6SharedState {
   separated: boolean;
   splitArrivals: Record<PlayerRole, boolean>;
   gateDiscovered: boolean;
+  memoryIntroReady: Record<PlayerRole, boolean>;
   memoryRound: number;
   memorySelections: Record<PlayerRole, string | null>;
   memoryFeedback: string | null;
@@ -39,6 +40,7 @@ export function initialPhase6State(): Phase6SharedState {
     revision: 0, stage: 'PHASE6_ENTER_PROMENADE',
     elderAnswers: { host: null, guest: null }, elderResolved: false, elderFeedback: null,
     separated: false, splitArrivals: { host: false, guest: false }, gateDiscovered: false,
+    memoryIntroReady: { host: false, guest: false },
     memoryRound: 0, memorySelections: { host: null, guest: null },
     memoryFeedback: null, memorySolved: false,
     rejoinArrivals: { host: false, guest: false }, reunited: false,
@@ -53,6 +55,10 @@ export class Phase6StateController {
 
   constructor(saved?: Phase6SharedState) {
     this.state = saved && Number.isInteger(saved.revision) ? saved : initialPhase6State();
+    this.state.memoryIntroReady = {
+      host: saved?.memoryIntroReady?.host === true,
+      guest: saved?.memoryIntroReady?.guest === true
+    };
   }
 
   private changed(): void { this.state.revision++; }
@@ -60,6 +66,10 @@ export class Phase6StateController {
   public applySnapshot(next: Phase6SharedState): boolean {
     if (!next || !Number.isInteger(next.revision) || next.revision < this.state.revision) return false;
     this.state = structuredClone(next);
+    this.state.memoryIntroReady = {
+      host: next.memoryIntroReady?.host === true,
+      guest: next.memoryIntroReady?.guest === true
+    };
     return true;
   }
 
@@ -105,7 +115,8 @@ export class Phase6StateController {
   }
 
   public selectMemory(role: PlayerRole, cardId: string, targetCardId: string): boolean {
-    if (this.state.stage !== 'MEMORY_PUZZLE' || this.state.memorySolved) return false;
+    if (this.state.stage !== 'MEMORY_PUZZLE' || this.state.memorySolved ||
+      !this.state.memoryIntroReady.host || !this.state.memoryIntroReady.guest) return false;
     const chooser: PlayerRole = this.state.memoryRound === 0 ? 'guest' : 'host';
     if (role !== chooser || this.state.memorySelections[role] === cardId) return false;
     this.state.memorySelections[role] = cardId;
@@ -123,6 +134,12 @@ export class Phase6StateController {
       this.state.memoryFeedback = 'Chưa phải ký ức ấy. Hãy kể thêm cho nhau nghe.';
       this.state.memorySelections[role] = null;
     }
+    this.changed(); return true;
+  }
+
+  public acknowledgeMemoryIntro(role: PlayerRole): boolean {
+    if (this.state.stage !== 'MEMORY_PUZZLE' || this.state.memoryIntroReady[role]) return false;
+    this.state.memoryIntroReady[role] = true;
     this.changed(); return true;
   }
 

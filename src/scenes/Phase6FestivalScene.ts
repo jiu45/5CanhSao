@@ -131,7 +131,8 @@ export class Phase6FestivalScene implements IScene {
     this.setupNetwork();
     this.setupHud();
     this.puzzleOverlay = new Phase6PuzzleOverlay(
-      id => this.submitElderAnswer(id), id => this.selectMemoryCard(id));
+      id => this.submitElderAnswer(id), id => this.selectMemoryCard(id),
+      () => this.acknowledgeMemoryIntro());
     window.addEventListener('keydown', this.boundKeyDown);
     window.addEventListener('keyup', this.boundKeyUp);
     window.addEventListener('pointerdown', this.boundPointerDown);
@@ -291,6 +292,9 @@ export class Phase6FestivalScene implements IScene {
       case NetworkEventType.MEMORY_CARD_SELECTED:
         changed = this.resolveMemorySelection(role, payload?.extra?.cardId);
         break;
+      case NetworkEventType.MEMORY_INTRO_READY:
+        changed = this.phase6State.acknowledgeMemoryIntro(role);
+        break;
       case NetworkEventType.REUNION_PLAYER_READY:
         changed = this.phase6State.arriveAtReunion(role);
         break;
@@ -322,6 +326,15 @@ export class Phase6FestivalScene implements IScene {
       if (this.resolveMemorySelection(this.role, cardId)) this.broadcastSnapshot();
     } else {
       void this.roomManager.sendEvent(NetworkEventType.MEMORY_CARD_SELECTED, { extra: { cardId } });
+    }
+  }
+
+  private acknowledgeMemoryIntro(): void {
+    if (this.phase6State.state.stage !== 'MEMORY_PUZZLE') return;
+    if (this.role === 'host') {
+      if (this.phase6State.acknowledgeMemoryIntro(this.role)) this.broadcastSnapshot();
+    } else {
+      void this.roomManager.sendEvent(NetworkEventType.MEMORY_INTRO_READY);
     }
   }
 
@@ -359,7 +372,7 @@ export class Phase6FestivalScene implements IScene {
     }
     if (state.stage === 'MEMORY_PUZZLE' && previous !== state.stage) {
       this.emitHook('memoryStart');
-      this.overlay.setSubtitle('Người Giữ Trăng trao một ký ức cho mỗi bên.', 4000);
+      this.overlay.clearSubtitle();
     }
     if (state.memorySolved && previous === 'MEMORY_PUZZLE') {
       this.emitHook('memorySuccess'); this.emitHook('guidance', { target: 'reunion' });

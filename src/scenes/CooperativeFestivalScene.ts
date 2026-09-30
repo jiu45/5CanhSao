@@ -56,6 +56,8 @@ export const ROUTE_REGISTRY: Record<string, THREE.CatmullRomCurve3> = {
   festival_coop_main: FESTIVAL_COOP_CURVE
 };
 
+const LIGHT_GATE_PROGRESS = 0.235;
+
 export class CooperativeFestivalScene implements IScene {
   public scene: THREE.Scene;
   private camera: THREE.PerspectiveCamera;
@@ -208,6 +210,7 @@ export class CooperativeFestivalScene implements IScene {
 
     // Initialize Tactile Electric Switch Overlay
     this.switchOverlay = new ElectricSwitchOverlay({
+      initiallyOn: this.isElectricSwitchOn,
       onToggle: (isOn) => {
         this.toggleElectricSwitch(isOn);
       }
@@ -423,6 +426,7 @@ export class CooperativeFestivalScene implements IScene {
 
     // 3. Companion Left Callback (Graceful Celestial Departure)
     this.roomManager.onCompanionLeft = () => {
+      this.isRemoteSwitchOn = false;
       this.companionArrivalHoldUntil = 0;
       this.arrivalGlow.intensity = 0;
       this.remoteEndReached = false;
@@ -473,13 +477,13 @@ export class CooperativeFestivalScene implements IScene {
   private configureTraditionalLanternBloom(lantern: StarLantern, isLit: boolean): void {
     const l = lantern as any;
     if (l.paperRedMat) {
-      l.paperRedMat.emissiveIntensity = isLit ? 0.62 : 0.40;
+      l.paperRedMat.emissiveIntensity = isLit ? 0.62 : 0.15;
     }
     if (l.paperYellowMat) {
-      l.paperYellowMat.emissiveIntensity = isLit ? 0.72 : 0.45;
+      l.paperYellowMat.emissiveIntensity = isLit ? 0.72 : 0.20;
     }
     if (lantern.candleLight) {
-      lantern.candleLight.intensity = isLit ? 2.3 : 1.8;
+      lantern.candleLight.intensity = isLit ? 2.3 : 0.12;
     }
   }
 
@@ -496,8 +500,10 @@ export class CooperativeFestivalScene implements IScene {
       (this.playerLantern as StarLantern).setElectricLit(this.isElectricSwitchOn);
       this.configureTraditionalLanternBloom(this.playerLantern as StarLantern, this.isElectricSwitchOn);
       this.remoteLantern = new ModernStarLantern();
+      this.remoteLantern.setLit(this.isRemoteSwitchOn, true);
     } else {
       this.playerLantern = new ModernStarLantern();
+      this.playerLantern.setLit(this.isElectricSwitchOn, true);
       this.remoteLantern = new StarLantern(this.recipientStyle);
       (this.remoteLantern as StarLantern).setStep(4);
       (this.remoteLantern as StarLantern).setModernized(true);
@@ -571,6 +577,7 @@ export class CooperativeFestivalScene implements IScene {
     const shouldMove = (this.isPointerDown || this.isKeyMoveDown) &&
       this.roomManager.hasCompanion &&
       !this.roomManager.isRejected && !this.destinationReached &&
+      (this.progressT < LIGHT_GATE_PROGRESS - 0.0001 || this.areBothLanternsLit()) &&
       performance.now() >= this.companionArrivalHoldUntil;
     if (shouldMove !== this.isMoving) {
       void this.roomManager.sendEvent(
@@ -580,6 +587,14 @@ export class CooperativeFestivalScene implements IScene {
     }
     this.isMoving = shouldMove;
     this.lanternHeld = shouldMove;
+  }
+
+  private areBothLanternsLit(): boolean {
+    return this.isElectricSwitchOn && this.isRemoteSwitchOn;
+  }
+
+  private isModernLightOn(): boolean {
+    return this.isHost ? this.isRemoteSwitchOn : this.isElectricSwitchOn;
   }
 
   // =========================================================================
@@ -703,10 +718,14 @@ export class CooperativeFestivalScene implements IScene {
 
       const advanceDist = this.baseSpeed * this.currentSpeedFactor * clampedDelta;
       const advanceDeltaT = advanceDist / this.curveLength;
-      this.progressT = Math.min(1.0, this.progressT + advanceDeltaT);
+      const previousProgress = this.progressT;
+      const nextProgress = this.progressT + advanceDeltaT;
+      const lightGateBlocked = !this.areBothLanternsLit() && nextProgress >= LIGHT_GATE_PROGRESS;
+      this.progressT = Math.min(1.0, lightGateBlocked ? LIGHT_GATE_PROGRESS : nextProgress);
+      if (lightGateBlocked) this.updateInputMovementState();
 
       // Footstep sound progression
-      this.footstepTimer += clampedDelta;
+      if (this.progressT > previousProgress) this.footstepTimer += clampedDelta;
       if (this.footstepTimer >= 0.46) {
         this.footstepTimer = 0.0;
         audioManager.playModernFootstep();
@@ -880,12 +899,12 @@ export class CooperativeFestivalScene implements IScene {
       this.targetAmbientIntensity = THREE.MathUtils.lerp(1.35, 0.48, darkFactor);
       this.targetFogDensity = THREE.MathUtils.lerp(0.0072, 0.016, darkFactor);
 
-      if (this.progressT >= 0.22 && !this.darkZoneIntroShown) {
+      if (this.progressT >= 0.20 && !this.darkZoneIntroShown) {
         this.darkZoneIntroShown = true;
         void this.roomManager.sendEvent(NetworkEventType.CHECKPOINT_REACHED, { checkpointId: 'DARK_ZONE' });
         this.overlay.setSubtitle(
-          'Con đường râm mát dưới rặng cây... Hãy thắp sáng bóng LED trên chiếc đèn ông sao hiện đại.',
-          4800
+          'Ngày xưa, một ngọn nến đủ soi lối. Đêm hội hôm nay, hãy cùng bật đèn LED trên hai chiếc đèn rồi bước tiếp.',
+          5600
         );
         this.switchOverlay?.show();
       }
@@ -923,6 +942,7 @@ export class CooperativeFestivalScene implements IScene {
    * Applies switch state, lighting surge, sound, subtitles, and network broadcast
    */
   public applySwitchState(switchOn: boolean, isLocal: boolean): void {
+    const wasBothLit = this.areBothLanternsLit();
     if (isLocal) {
       this.isElectricSwitchOn = switchOn;
       this.switchOverlay?.setSwitchState(switchOn, false);
@@ -931,38 +951,27 @@ export class CooperativeFestivalScene implements IScene {
       this.isRemoteSwitchOn = switchOn;
     }
 
-    // The electric switch specifically illuminates the ModernStarLantern (battery-powered LED)
-    const modernLantern = (this.playerLantern instanceof ModernStarLantern)
-      ? this.playerLantern
-      : (this.remoteLantern instanceof ModernStarLantern ? this.remoteLantern : null);
-
-    if (modernLantern) {
-      modernLantern.setLit(switchOn);
+    // Each device lights only the lantern its player carries. The other light
+    // follows the companion's switch event.
+    const lantern = isLocal ? this.playerLantern : this.remoteLantern;
+    if (lantern instanceof ModernStarLantern) lantern.setLit(switchOn);
+    else {
+      lantern.setElectricLit(switchOn);
+      this.configureTraditionalLanternBloom(lantern, switchOn);
     }
 
-    // For StarLantern (traditional), also respond to switch activation by enhancing warmth and updating lit state
-    const traditionalLantern = (this.playerLantern instanceof StarLantern)
-      ? this.playerLantern
-      : (this.remoteLantern instanceof StarLantern ? this.remoteLantern : null);
-    if (traditionalLantern) {
-      traditionalLantern.isLit = switchOn;
-      if (typeof (traditionalLantern as any).setElectricLit === 'function') {
-        (traditionalLantern as any).setElectricLit(switchOn);
-      }
-      this.configureTraditionalLanternBloom(traditionalLantern as StarLantern, switchOn);
-    }
-
-    if (switchOn) {
+    if (switchOn && lantern instanceof ModernStarLantern) {
       this.ledSurgeTimer = this.ledSurgeDuration;
-      this.modernSpotLight.visible = true;
       this.modernSpotLight.intensity = 2.4;
-
-      if (isLocal) this.triggerSwitchMonologue();
-    } else {
-      this.modernSpotLight.visible = this.isElectricSwitchOn || this.isRemoteSwitchOn;
-      if (!this.modernSpotLight.visible) this.modernSpotLight.intensity = 0.0;
-      if (isLocal) this.clearSwitchMonologue();
     }
+    this.modernSpotLight.visible = this.isModernLightOn();
+    if (!this.modernSpotLight.visible) this.modernSpotLight.intensity = 0.0;
+    if (isLocal && switchOn) this.triggerSwitchMonologue();
+    if (isLocal && !switchOn) this.clearSwitchMonologue();
+    if (!wasBothLit && this.areBothLanternsLit()) {
+      this.overlay.setSubtitle('Tách. Hai ngọn đèn đã cùng sáng. Mình đi tiếp nhé.', 3800);
+    }
+    this.updateInputMovementState();
 
     // Broadcast discrete event immediately to companion if triggered locally
     if (isLocal) {
@@ -979,7 +988,7 @@ export class CooperativeFestivalScene implements IScene {
     const modernLantern = (this.playerLantern instanceof ModernStarLantern)
       ? this.playerLantern
       : (this.remoteLantern instanceof ModernStarLantern ? this.remoteLantern : null);
-    if ((!this.isElectricSwitchOn && !this.isRemoteSwitchOn) || !modernLantern) return;
+    if (!this.isModernLightOn() || !modernLantern) return;
 
     if (this.ledSurgeTimer > 0) {
       this.ledSurgeTimer = Math.max(0, this.ledSurgeTimer - delta);
@@ -999,7 +1008,9 @@ export class CooperativeFestivalScene implements IScene {
 
   private triggerSwitchMonologue(): void {
     this.clearSwitchMonologue();
-    this.overlay.setSubtitle('Tách. Ngọn đèn mới sáng lên cạnh ngọn nến cũ.', 4800);
+    if (!this.areBothLanternsLit()) {
+      this.overlay.setSubtitle('Tách. Đèn của bạn đã sáng. Còn chờ ánh đèn bên kia.', 4800);
+    }
     const t = window.setTimeout(() => {
       this.overlay.clearSubtitle();
     }, 4800);

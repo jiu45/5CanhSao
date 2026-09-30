@@ -56,11 +56,7 @@ export class GrandFestivalScene implements IScene {
   public readonly finale = new FinaleMoment();
   public readonly finaleSky = new FinaleSky();
   public elapsed = 0;
-  public messageBeats = [
-    'Trung Thu năm nay...',
-    'em không cần phải đi một mình nữa.',
-    'Chúc em một mùa trăng rằm thật dịu dàng.'
-  ];
+  public messageBeats: string[] = [];
   private readonly direct: boolean;
   private readonly previousFov: number;
   private readonly previousFar: number;
@@ -83,8 +79,7 @@ export class GrandFestivalScene implements IScene {
     const paragraphs = finalWishText.replace(/\r/g, '').trim().split(/\n\s*\n/)
       .map(paragraph => paragraph.replace(/\s*\n\s*/g, ' ').trim())
       .filter(Boolean).flatMap(splitWishParagraph);
-    if (paragraphs.length) this.messageBeats = [this.messageBeats[0],
-      this.messageBeats[1], ...paragraphs];
+    this.messageBeats = paragraphs;
   }
 
   constructor(private camera: THREE.PerspectiveCamera, private overlay: StoryOverlay,

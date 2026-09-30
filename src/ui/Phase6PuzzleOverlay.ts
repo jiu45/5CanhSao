@@ -13,7 +13,8 @@ export class Phase6PuzzleOverlay {
   private lastRenderKey = '';
 
   constructor(private onElderAnswer: (id: string) => void,
-    private onMemoryChoice: (id: string) => void) {
+    private onMemoryChoice: (id: string) => void,
+    private onMemoryIntroReady: () => void) {
     this.style = document.createElement('style');
     this.style.textContent = `
       .phase6-keepsake { position:fixed; z-index:45; bottom:16px; left:50%; transform:translateX(-50%);
@@ -73,6 +74,31 @@ export class Phase6PuzzleOverlay {
       .phase6-keepsake .featured img { width:100%; height:182px; object-fit:cover; display:block;
         background:#ddd1bb; }
       .phase6-keepsake small { display:block; margin-top:10px; color:#ebcf9c; }
+      .phase6-keepsake.intro-mode { inset:0; left:0; bottom:0; transform:none;
+        width:100%; max-height:none; max-width:none; overflow:auto; padding:20px;
+        border:0; border-radius:0; box-shadow:none;
+        background:radial-gradient(ellipse at center,rgba(5,14,29,.55),rgba(3,8,20,.82));
+        place-items:center; }
+      .phase6-intro-paper { box-sizing:border-box; width:min(610px,100%); padding:36px 42px 32px;
+        background:linear-gradient(155deg,rgba(17,30,49,.96),rgba(16,25,42,.97));
+        border:1px solid rgba(245,208,137,.55); border-radius:4px 30px 4px 30px;
+        box-shadow:0 22px 65px #020713ac,inset 0 1px #fff3ce2b; }
+      .phase6-intro-kicker { display:block; font:600 11px 'Segoe UI',sans-serif;
+        letter-spacing:.3em; color:#e9bc76; margin-bottom:16px; }
+      .phase6-intro-paper h2 { font:400 clamp(25px,4vw,34px) Georgia,serif;
+        color:#fff2d2; margin:0 0 17px; letter-spacing:.01em; }
+      .phase6-intro-paper p { font:400 clamp(16px,2.25vw,18px)/1.65 'Segoe UI',system-ui,sans-serif;
+        color:#e9e4db; margin:0 auto 13px; max-width:510px; }
+      .phase6-intro-divider { width:76px; height:1px; margin:21px auto;
+        background:linear-gradient(90deg,transparent,#f5d796,transparent); }
+      .phase6-keepsake.intro-mode .phase6-intro-button { margin-top:9px; padding:12px 28px;
+        min-height:0; border:1px solid #f1c982; border-radius:999px;
+        color:#1a2230; background:linear-gradient(110deg,#ffe9ad,#e9b775);
+        box-shadow:0 5px 23px #ffcf7940; font:600 15px 'Segoe UI',sans-serif; }
+      .phase6-keepsake.intro-mode .phase6-intro-button:hover,
+      .phase6-keepsake.intro-mode .phase6-intro-button:focus-visible {
+        outline:2px solid #fff4cf; outline-offset:3px; filter:brightness(1.07); }
+      .phase6-intro-wait { font:400 14px Georgia,serif; color:#f1dbaa; }
       @media(max-width:680px) {
         .phase6-keepsake {padding:13px 15px;}
         .phase6-keepsake h2{font-size:18px;}
@@ -81,6 +107,7 @@ export class Phase6PuzzleOverlay {
         .phase6-keepsake.memory-mode h2{top:75px;font-size:16px;}
         .phase6-keepsake.memory-mode p{top:108px;font-size:12px;}
         .phase6-keepsake.memory-mode p:nth-of-type(2){top:150px;}
+        .phase6-intro-paper {padding:30px 24px 26px;}
       }
       @media(prefers-reduced-motion:reduce) {
         .phase6-keepsake .memory-card{transition:none;}
@@ -103,10 +130,13 @@ export class Phase6PuzzleOverlay {
     this.root.replaceChildren();
     const elder = state.stage === 'ELDER_PUZZLE';
     const memory = state.stage === 'MEMORY_PUZZLE';
-    this.root.classList.toggle('memory-mode', memory);
-    this.root.style.display = elder || memory ? 'block' : 'none';
+    const intro = memory && !(state.memoryIntroReady?.host && state.memoryIntroReady?.guest);
+    this.root.classList.toggle('memory-mode', memory && !intro);
+    this.root.classList.toggle('intro-mode', intro);
+    this.root.style.display = intro ? 'grid' : elder || memory ? 'block' : 'none';
     if (elder) this.renderElder(state, role);
-    if (memory) this.renderMemory(state, role, deck);
+    if (intro) this.renderMemoryIntro(state, role);
+    else if (memory) this.renderMemory(state, role, deck);
   }
 
   private heading(text: string): void {
@@ -131,6 +161,28 @@ export class Phase6PuzzleOverlay {
       button.addEventListener('click', () => this.onElderAnswer(id)); choices.appendChild(button);
     });
     this.root.appendChild(choices);
+  }
+
+  private renderMemoryIntro(state: Phase6SharedState, role: PlayerRole): void {
+    const paper = document.createElement('div'); paper.className = 'phase6-intro-paper';
+    paper.innerHTML = `<span class="phase6-intro-kicker">NGƯỜI GIỮ TRĂNG</span>
+      <h2>Hai ánh đèn, một ký ức</h2>
+      <p>Ông đã thấy lối đưa hai người về bên nhau. Nhưng ánh sáng chỉ hiện ra khi mỗi người lắng nghe điều người kia đang nhìn thấy.</p>
+      <div class="phase6-intro-divider" aria-hidden="true"></div>
+      <p>Một người kể về tấm ảnh mình nhận được, người kia chọn đúng ký ức ấy. Rồi hai người đổi vai.</p>`;
+    if (state.memoryIntroReady?.[role]) {
+      const wait = document.createElement('small'); wait.className = 'phase6-intro-wait';
+      wait.textContent = 'Đợi ngọn đèn kia cùng mở ký ức...'; paper.appendChild(wait);
+    } else {
+      const button = document.createElement('button'); button.className = 'phase6-intro-button';
+      button.type = 'button'; button.textContent = 'Cùng mở ký ức';
+      button.addEventListener('click', () => {
+        button.disabled = true; button.textContent = 'Đang chờ ánh đèn kia...';
+        this.onMemoryIntroReady();
+      });
+      paper.appendChild(button);
+    }
+    this.root.appendChild(paper);
   }
 
   private renderMemory(state: Phase6SharedState, role: PlayerRole, deck: MemoryDeck | null): void {
