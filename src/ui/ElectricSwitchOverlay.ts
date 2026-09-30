@@ -76,7 +76,7 @@ export class ElectricSwitchOverlay {
               class="switch-indicator-led ${this.isOn ? 'led-on' : 'led-off'}"
               title="Trạng thái bóng LED"
             ></div>
-            <span class="led-subtext">${this.isOn ? 'LED ON' : 'LED OFF'}</span>
+            <span class="led-subtext">${this.isOn ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}</span>
           </div>
         </div>
 
@@ -137,7 +137,7 @@ export class ElectricSwitchOverlay {
 
     const ledSubtext = this.container.querySelector('.led-subtext');
     if (ledSubtext) {
-      ledSubtext.textContent = isOn ? 'LED ON' : 'LED OFF';
+      ledSubtext.textContent = isOn ? 'ĐÃ BẬT' : 'ĐÃ TẮT';
     }
 
     // Play tactile mechanical switch "tách" audio

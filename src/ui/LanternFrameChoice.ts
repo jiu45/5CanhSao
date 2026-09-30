@@ -12,7 +12,7 @@ export class LanternFrameChoice {
     this.root.setAttribute('aria-label', 'Chọn khung đèn');
     const sheet = document.createElement('div'); sheet.className = 'lantern-frame-sheet';
     const prompt = document.createElement('p'); prompt.className = 'lantern-frame-prompt';
-    prompt.textContent = 'Nan tre mềm trong tay. Đêm nay, em muốn uốn thành chiếc đèn nào?';
+    prompt.textContent = 'Nan tre mềm trong tay. Đêm nay, bạn muốn uốn thành chiếc đèn nào?';
     const grid = document.createElement('div'); grid.className = 'lantern-frame-grid';
     LANTERN_STYLES.forEach(style => {
       const button = document.createElement('button');

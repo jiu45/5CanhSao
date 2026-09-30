@@ -76,12 +76,12 @@ export const StoryConfig: StoryConfigType = {
   craftingSubtitles: {
     step0: "Trên chiếc chiếu cói, chiếc đèn đầu tiên bắt đầu từ vài thanh nan tre.",
     step1: "Những thanh nan tre khép lại thành khung sao năm cánh.",
-    step2: "Giấy kiếng đỏ cam phủ lên khung tre. Vệt trăng xuyên qua lớp giấy mỏng...",
+    step2: "Lớp giấy kiếng mỏng phủ lên khung tre; ánh trăng khẽ xuyên qua màu giấy.",
     step3: "Dây kẽm giữ chặt khung tre; cán đèn đã sẵn sàng để mang ra ngoài.",
     completed: "Từ vài thanh nan tre, bạn đã có một ngọn đèn để mang ra đêm hội."
   },
   doorRevealSubtitles: [
-    "Cầm chiếc đèn mình vừa làm, đẩy nhẹ cánh cửa gỗ bước ra con ngõ làng...",
+    "Cầm chiếc đèn bạn vừa làm, đẩy nhẹ cánh cửa gỗ bước ra con ngõ làng...",
     "Ngoài kia, cả làng quê đang rộn rã tiếng cười đùa và tiếng trống ếch rước đèn."
   ],
   villageWalk: {
@@ -89,7 +89,7 @@ export const StoryConfig: StoryConfigType = {
     candleWarning: "Gió thu đang thổi nhè nhẹ, chớ chạy quá vội kẻo nến chao nghiêng nhé...",
     windGustWarning: "Gió thốc qua rặng tre. Ánh nến chao nghiêng trong tay bạn!",
     vignetteFamily: "Bên hiên nhà, hơi trà sen quyện trong tiếng chuyện trò.",
-    vignetteKids: "Đám trẻ chạy ngang với đèn cá chép; tiếng cười lẫn trong tiếng trống.",
+    vignetteKids: "Lũ trẻ xóm trên rước đèn cá chép chạy về sân đình. Theo tiếng cười của chúng nào!",
     vignetteFeast: "Một mâm cỗ trông trăng chờ cả nhà bên đường làng.",
     vignetteTempleGate: "Cổng đình đã hiện ra. Tiếng trống lân mỗi lúc một gần."
   },

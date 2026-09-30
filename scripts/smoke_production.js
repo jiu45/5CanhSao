@@ -29,7 +29,8 @@ try {
     throw new Error('Phase 7 wish differs after refresh');
   const terminal = await page.evaluate(() => {
     const scene = window.sceneManager.currentScene;
-    scene.elapsed = scene.getMessageEndTime() + 31;
+    // Release starts 2.1s after the letter, then the end card takes 31s to settle.
+    scene.elapsed = scene.getMessageEndTime() + 34;
     scene.update(0.016, performance.now() / 1000);
     return scene.isFinished && scene.fadeLayer.style.opacity === '1' &&
       document.elementFromPoint(innerWidth / 2, innerHeight / 2) === scene.fadeLayer;

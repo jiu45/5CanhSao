@@ -738,7 +738,7 @@ export class VillageWalkScene implements IScene {
     this.lantern.ignite();
     this.setShieldPrompt(false);
     this.overlay.hideNextButton();
-    this.overlay.setSubtitle('Bạn châm lại ngọn nến. Ánh sao nhỏ trở về trong tay.', 3800, true);
+    this.overlay.setSubtitle('Bạn châm lại ngọn nến. Ánh sáng nhỏ trở về trong tay.', 3800, true);
     audioManager.playCandleIgnite();
   }
 
@@ -825,13 +825,18 @@ export class VillageWalkScene implements IScene {
       const gustMagnitude = Math.sin(Math.min(1, this.windGustTimer / 3.5) * Math.PI) * 1.35;
       effectiveWindFactor = Math.max(effectiveWindFactor, gustMagnitude);
       if (!this.isShielding && !this.windLessonCompleted && !this.flameNeedsRelight) {
-        this.unshieldedWindExposure += delta * Math.max(0, gustMagnitude - 0.3);
+        // A hurried pace feeds more air into the same gust; shielding still protects the flame.
+        this.unshieldedWindExposure += delta * Math.max(0, gustMagnitude - 0.3)
+          * (0.55 + 0.9 * this.currentSpeed / this.maxSpeed);
         if (this.unshieldedWindExposure > 0.72) {
+          const hurried = this.currentSpeed > this.maxSpeed * 0.55;
           this.flameNeedsRelight = true;
           this.setShieldPrompt(true);
           this.currentSpeed = 0;
           this.lantern.extinguish();
-          this.overlay.setSubtitle('Gió thổi tắt nến. Dừng lại một nhịp rồi châm lại ngọn lửa nhé.', 6000, true);
+          this.overlay.setSubtitle(hurried
+            ? 'Gió và bước chân quá vội làm nến tắt. Dừng lại, che ngọn đèn rồi châm nến nhé.'
+            : 'Cơn gió thổi tắt nến. Dừng lại, che ngọn đèn rồi châm nến nhé.', 6000, true);
           this.overlay.showNextButton('Châm lại ngọn nến 🕯️', () => this.relightCandle());
         }
       }
@@ -916,14 +921,17 @@ export class VillageWalkScene implements IScene {
       }
     }
 
-    // Vignette 2: Running Kids with Carp Lantern (z <= -20.0)
-    if (this.playerZ <= -20.0 && !this.vignette2Triggered) {
+    // Let the wind lesson finish before the carp lantern draws us toward the đình.
+    if (this.playerZ <= -24.0 && !this.vignette2Triggered) {
       this.vignette2Triggered = true;
       this.kidsRunningActive = true;
       this.kidsRunProgress = 0;
       this.kidRunStartZ = this.playerZ + 1.8; // Start from just behind player's right shoulder!
       audioManager.playLanternParadeCall(0.05);
-      // The passing children and their laughter tell this beat without text.
+      // Let the child enter the shot before the line invites the player to follow.
+      this.timerIds.push(window.setTimeout(() => {
+        if (!this.festivalArrived) this.overlay.setSubtitle(StoryConfig.villageWalk.vignetteKids, 4100, true);
+      }, 450));
     }
 
     // Vignette 2 animation: Kid sprints from behind player forward along the road

@@ -8,10 +8,10 @@ import { RecordedMusic } from './RecordedMusic';
 export class AudioManager {
   private ctx: AudioContext | null = null;
   private isMuted: boolean = false;
-  private cricketSource: OscillatorNode | null = null;
-  private cricketInterval: number | null = null;
   private windSource: AudioBufferSourceNode | null = null;
   private windGain: GainNode | null = null;
+  private windDrift: OscillatorNode | null = null;
+  private windDriftGain: GainNode | null = null;
   private flameSource: OscillatorNode | null = null;
   private ascentWindSource: AudioBufferSourceNode | null = null;
   private score: FestivalScore | null = null;
@@ -165,12 +165,20 @@ export class AudioManager {
       this.ctx.resume();
     }
 
-    // 1. Soft nocturnal breeze (Bandpass filtered white noise)
-    const bufferSize = this.ctx.sampleRate * 2;
+    // A quiet, non-tonal night breeze. The former 4.6 kHz pulse sounded like
+    // repeated metal clicks and competed with the music throughout the past.
+    const bufferSize = this.ctx.sampleRate * 6;
     const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
       output[i] = Math.random() * 2 - 1;
+    }
+    // Join the random buffer without an audible click at each loop boundary.
+    const joinSamples = Math.min(4096, Math.floor(bufferSize / 16));
+    for (let i = 0; i < joinSamples; i++) {
+      const blend = i / (joinSamples - 1);
+      const tail = bufferSize - joinSamples + i;
+      output[tail] = output[tail] * (1 - blend) + output[0] * blend;
     }
 
     const whiteNoise = this.ctx.createBufferSource();
@@ -178,72 +186,44 @@ export class AudioManager {
     whiteNoise.loop = true;
 
     const windFilter = this.ctx.createBiquadFilter();
-    windFilter.type = 'bandpass';
-    windFilter.frequency.value = 350;
-    windFilter.Q.value = 2.5;
+    windFilter.type = 'lowpass';
+    windFilter.frequency.value = 700;
+    windFilter.Q.value = 0.55;
 
     const windGain = this.ctx.createGain();
-    windGain.gain.value = 0.035;
+    windGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+    windGain.gain.setTargetAtTime(0.023, this.ctx.currentTime, 0.55);
+
+    const drift = this.ctx.createOscillator();
+    const driftGain = this.ctx.createGain();
+    drift.frequency.value = 0.08;
+    driftGain.gain.value = 0.004;
+    drift.connect(driftGain);
+    driftGain.connect(windGain.gain);
 
     whiteNoise.connect(windFilter);
     windFilter.connect(windGain);
     windGain.connect(this.ctx.destination);
     whiteNoise.start();
+    drift.start();
     this.windSource = whiteNoise;
     this.windGain = windGain;
+    this.windDrift = drift;
+    this.windDriftGain = driftGain;
 
-    // 2. Distant crickets ambient pulse
-    this.startCrickets();
-  }
-
-  private startCrickets() {
-    if (!this.ctx) return;
-
-    // Periodic soft chirping pulse
-    const cricketOsc = this.ctx.createOscillator();
-    const cricketGain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
-
-    cricketOsc.type = 'sine';
-    cricketOsc.frequency.value = 4600;
-
-    filter.type = 'bandpass';
-    filter.frequency.value = 4600;
-    filter.Q.value = 5.0;
-
-    cricketGain.gain.value = 0.0;
-
-    cricketOsc.connect(filter);
-    filter.connect(cricketGain);
-    cricketGain.connect(this.ctx.destination);
-    cricketOsc.start();
-
-    // Modulate gain to sound like real summer/autumn crickets
-    let tick = 0;
-    this.cricketInterval = window.setInterval(() => {
-      if (!this.ctx || this.isMuted) return;
-      tick++;
-      const now = this.ctx.currentTime;
-      // Chirp burst
-      if (tick % 6 === 0 || tick % 6 === 1 || tick % 6 === 2) {
-        cricketGain.gain.cancelScheduledValues(now);
-        cricketGain.gain.setValueAtTime(0.015, now);
-        cricketGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-      }
-    }, 120);
-
-    this.cricketSource = cricketOsc;
   }
 
   public stopNightAmbience(): void {
-    if (this.cricketInterval !== null) window.clearInterval(this.cricketInterval);
-    this.cricketInterval = null;
-    this.cricketSource?.stop();
-    this.cricketSource = null;
+    this.windDrift?.stop();
+    this.windDrift?.disconnect();
+    this.windDriftGain?.disconnect();
+    this.windDrift = null;
+    this.windDriftGain = null;
     if (this.windSource && this.ctx) {
       this.windGain?.gain.setTargetAtTime(0.0001, this.ctx.currentTime, .15);
       const source = this.windSource;
       source.stop(this.ctx.currentTime + .8);
+      source.onended = () => source.disconnect();
     }
     this.windSource = null;
     this.windGain = null;
@@ -1719,7 +1699,7 @@ export class AudioManager {
 
   /**
    * Soft nocturnal soundscape for the Moon Opening screen:
-   * Very distant night wind + faint crickets. Designed to play under
+   * Very distant, soft night air. Designed to play under
    * the title card before the player clicks "Tua ngược thời gian".
    */
   public startMoonOpeningSoundscape(): void {

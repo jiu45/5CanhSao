@@ -379,9 +379,18 @@ html, body {
 }
 .dedication-page.leaving { opacity: 0; }
 .dedication-page.instant, .dedication-page.instant * { transition-duration: 0ms !important; }
+.dedication-art {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 1200ms ease;
+}
+.dedication-art-mobile { display: none; }
+.dedication-page.art-visible .dedication-art { opacity: .82; }
 .dedication-splash {
   position: relative;
-  width: min(88vw, 560px);
+  width: min(92vw, 600px);
   height: 180px;
   text-align: center;
   text-shadow: 0 2px 20px #020913;
@@ -389,8 +398,10 @@ html, body {
 .dedication-splash-line {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .32em;
   margin: 0;
   opacity: 0;
   transform: translateY(9px);
@@ -399,13 +410,24 @@ html, body {
   font-size: clamp(1.35rem, 3vw, 1.8rem);
   font-weight: 400;
   letter-spacing: .025em;
+  white-space: nowrap;
+}
+.dedication-splash-line span {
+  color: #edbd86;
+  font-style: italic;
+  font-weight: inherit;
+  text-shadow: 0 0 22px rgba(245, 172, 93, .32), 0 2px 20px #020913;
 }
 .dedication-splash .visible {
   opacity: 1;
   transform: translateY(0);
 }
+@media (max-width: 600px) {
+  .dedication-art:not(.dedication-art-mobile) { display: none; }
+  .dedication-art-mobile { display: block; }
+}
 @media (prefers-reduced-motion: reduce) {
-  .dedication-page, .dedication-splash * { transition-duration: 1ms; }
+  .dedication-page, .dedication-art, .dedication-splash * { transition-duration: 1ms; }
 }
 
 /* A small page of bamboo outlines, opened only after the player touches the rods. */

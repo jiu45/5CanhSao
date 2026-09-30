@@ -14,8 +14,8 @@ export class CraftingUI {
 
   private steps: CraftStep[] = [
     { id: 1, name: "1. Khung nan tre", icon: "🎋", desc: "Chạm nan tre và chọn dáng đèn" },
-    { id: 2, name: "2. Giấy kiếng đỏ vàng", icon: "🏮", desc: "Dán lớp áo trong veo mùa thu" },
-    { id: 3, name: "3. Dây kẽm & cán tre", icon: "✨", desc: "Buộc nút thắt và gắn cán cầm" },
+    { id: 2, name: "2. Giấy kiếng màu", icon: "🏮", desc: "Dán lớp áo trong veo mùa thu" },
+    { id: 3, name: "3. Dây kẽm và cán tre", icon: "✨", desc: "Buộc nút thắt và gắn cán cầm" },
     { id: 4, name: "4. Thắp nến đón trăng", icon: "🕯️", desc: "Thắp sáng ngọn lửa ấm áp" }
   ];
 

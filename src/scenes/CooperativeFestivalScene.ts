@@ -969,7 +969,7 @@ export class CooperativeFestivalScene implements IScene {
     if (isLocal && switchOn) this.triggerSwitchMonologue();
     if (isLocal && !switchOn) this.clearSwitchMonologue();
     if (!wasBothLit && this.areBothLanternsLit()) {
-      this.overlay.setSubtitle('Tách. Hai ngọn đèn đã cùng sáng. Mình đi tiếp nhé.', 3800);
+      this.overlay.setSubtitle('Tách. Hai ngọn đèn đã cùng sáng. Cùng bước tiếp nhé.', 3800);
     }
     this.updateInputMovementState();
 
@@ -1299,7 +1299,7 @@ export class CooperativeFestivalScene implements IScene {
 
     this.controlsHintEl = document.createElement('div');
     this.controlsHintEl.className = 'coop-controls-hint';
-    this.controlsHintEl.textContent = 'Nhấn giữ Chuột trái / Phím [W] để nhấc đèn và cùng sánh bước';
+    this.controlsHintEl.textContent = 'Giữ chuột trái hoặc phím W để nhấc đèn và cùng sánh bước';
     document.body.appendChild(this.controlsHintEl);
 
     this.updateHudBadges();

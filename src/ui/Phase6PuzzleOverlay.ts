@@ -192,7 +192,7 @@ export class Phase6PuzzleOverlay {
     if (!round) return;
     const viewer = round.viewerRole === role;
     if (viewer) {
-      this.paragraph('Hãy kể cho bạn mình điều bạn nhìn thấy. Người ấy sẽ chọn tấm ảnh đúng.');
+      this.paragraph('Hãy kể cho người đồng hành điều bạn nhìn thấy. Người ấy sẽ chọn tấm ảnh đúng.');
       const card = deck.cards.find(item => item.id === round.targetCardId)!;
       const frame = document.createElement('div'); frame.className = 'featured';
       const img = document.createElement('img'); img.src = card.imageSrc; img.alt = card.alt || card.caption || '';
