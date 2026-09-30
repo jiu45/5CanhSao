@@ -77,11 +77,11 @@ export const StoryConfig: StoryConfigType = {
     step0: "Trên chiếc chiếu cói, chiếc đèn đầu tiên bắt đầu từ vài thanh nan tre.",
     step1: "Những thanh nan tre khép lại thành khung sao năm cánh.",
     step2: "Giấy kiếng đỏ cam phủ lên khung tre. Vệt trăng xuyên qua lớp giấy mỏng...",
-    step3: "Dây kẽm giữ chặt những đầu cánh; cán tre đã sẵn sàng để mang ngôi sao ra ngoài.",
+    step3: "Dây kẽm giữ chặt khung tre; cán đèn đã sẵn sàng để mang ra ngoài.",
     completed: "Từ vài thanh nan tre, bạn đã có một ngọn đèn để mang ra đêm hội."
   },
   doorRevealSubtitles: [
-    "Cầm chiếc đèn ông sao, đẩy nhẹ cánh cửa gỗ bước ra con ngõ làng...",
+    "Cầm chiếc đèn mình vừa làm, đẩy nhẹ cánh cửa gỗ bước ra con ngõ làng...",
     "Ngoài kia, cả làng quê đang rộn rã tiếng cười đùa và tiếng trống ếch rước đèn."
   ],
   villageWalk: {
@@ -130,5 +130,5 @@ export const StoryConfig: StoryConfigType = {
     nearFestivalHandoff: "Dưới vòm cổng, ánh đèn rước hội đã ở rất gần.",
     actionEnterFestival: "Bước vào đêm hội 🏮"
   },
-  finalLetter: "Dù Trung Thu này hai đứa mình ở cách xa nhau, nhưng ngọn nến trong chiếc đèn ông sao này sẽ luôn sưởi ấm và soi sáng dẫn lối cho chúng mình cùng nhau."
+  finalLetter: "Dù Trung Thu này hai đứa mình ở cách xa nhau, nhưng ngọn nến trong chiếc đèn này sẽ luôn sưởi ấm và soi sáng dẫn lối cho chúng mình cùng nhau."
 };

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { IScene } from './BaseScene';
 import { StarLantern } from '../props/StarLantern';
+import { readRecipientLanternStyle } from '../props/LanternIdentity';
 import { Moon } from '../props/Moon';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { StoryConfig } from '../config/StoryConfig';
@@ -108,7 +109,7 @@ export class VillageWalkScene implements IScene {
     this.onComplete = onComplete;
 
     // 1. Hero Star Lantern (exact model & materials from Phase 1)
-    this.lantern = new StarLantern();
+    this.lantern = new StarLantern(readRecipientLanternStyle());
     this.lantern.setStep(4);
     this.lantern.group.scale.set(0.56, 0.56, 0.56);
     this.lantern.group.position.set(0.60, 1.02, this.playerZ - 0.68);

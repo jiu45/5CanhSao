@@ -10,9 +10,10 @@ export class CraftingUI {
   private cards: HTMLDivElement[] = [];
   public currentStep: number = 0;
   public onStepCompleted?: (step: number) => void;
+  public onBeforeAdvance?: (nextStep: number) => boolean;
 
   private steps: CraftStep[] = [
-    { id: 1, name: "1. Khung nan tre", icon: "🎋", desc: "Uốn ghép ngôi sao năm cánh" },
+    { id: 1, name: "1. Khung nan tre", icon: "🎋", desc: "Chạm nan tre và chọn dáng đèn" },
     { id: 2, name: "2. Giấy kiếng đỏ vàng", icon: "🏮", desc: "Dán lớp áo trong veo mùa thu" },
     { id: 3, name: "3. Dây kẽm & cán tre", icon: "✨", desc: "Buộc nút thắt và gắn cán cầm" },
     { id: 4, name: "4. Thắp nến đón trăng", icon: "🕯️", desc: "Thắp sáng ngọn lửa ấm áp" }
@@ -75,6 +76,7 @@ export class CraftingUI {
 
   public advanceStep() {
     if (this.currentStep >= this.steps.length) return;
+    if (this.onBeforeAdvance?.(this.currentStep + 1) === false) return;
 
     const completed = this.currentStep + 1;
     this.cards[this.currentStep].classList.remove('active');
@@ -97,6 +99,12 @@ export class CraftingUI {
         this.hide();
       }, 1200);
     }
+  }
+
+  public setFrameDescription(description: string): void {
+    this.steps[0].desc = description;
+    const label = this.cards[0]?.querySelector('.craft-desc');
+    if (label) label.textContent = description;
   }
 
   private updateCardStates() {

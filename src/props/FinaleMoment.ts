@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { drawLanternSilhouette } from './LanternSilhouetteArt';
+import type { LanternStyle } from './LanternIdentity';
 
 function texture(size: number, paint: (ctx: CanvasRenderingContext2D) => void): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -10,13 +12,23 @@ function texture(size: number, paint: (ctx: CanvasRenderingContext2D) => void): 
   return result;
 }
 
-function lightPool(color: string): THREE.CanvasTexture {
+function identityPool(style: LanternStyle, color: string): THREE.CanvasTexture {
   return texture(256, ctx => {
-    const g = ctx.createRadialGradient(128, 128, 8, 128, 128, 127);
-    g.addColorStop(0, `rgba(${color},.73)`);
-    g.addColorStop(0.45, `rgba(${color},.26)`);
-    g.addColorStop(1, `rgba(${color},0)`);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+    const halo = ctx.createRadialGradient(128, 128, 4, 128, 128, 127);
+    halo.addColorStop(0, `rgba(${color},.67)`);
+    halo.addColorStop(.55, `rgba(${color},.19)`);
+    halo.addColorStop(1, `rgba(${color},0)`);
+    ctx.fillStyle = halo; ctx.fillRect(0, 0, 256, 256);
+    const cutout = document.createElement('canvas');
+    cutout.width = cutout.height = 256;
+    const silhouette = cutout.getContext('2d')!;
+    silhouette.drawImage(drawLanternSilhouette(style, true), 20, 20, 216, 216);
+    silhouette.globalCompositeOperation = 'source-in';
+    silhouette.fillStyle = 'rgba(255,229,154,.93)';
+    silhouette.fillRect(0, 0, 256, 256);
+    ctx.save(); ctx.globalAlpha = .88; ctx.filter = 'blur(3px)';
+    ctx.drawImage(cutout, 0, 0);
+    ctx.restore();
   });
 }
 
@@ -70,12 +82,12 @@ export class FinaleMoment {
 
   constructor() {
     this.group.position.set(176, 0, -83);
-    for (const [z, rgb] of [[-1.05, '255,173,80'], [1.05, '255,207,131']] as const) {
-      const pool = new THREE.Mesh(new THREE.PlaneGeometry(6.5, 6.5),
-        new THREE.MeshBasicMaterial({ map: lightPool(rgb), transparent: true,
+    for (const [z, rgb] of [[-1.42, '255,173,80'], [1.42, '255,207,131']] as const) {
+      const pool = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2),
+        new THREE.MeshBasicMaterial({ map: identityPool('star', rgb), transparent: true,
           opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
       pool.rotation.x = -Math.PI / 2;
-      pool.position.set(33, 0.11, z);
+      pool.position.set(36, 0.11, z);
       this.group.add(pool); this.pools.push(pool);
     }
     this.star = new THREE.Mesh(new THREE.PlaneGeometry(6.8, 6.8),
@@ -95,6 +107,15 @@ export class FinaleMoment {
     this.message.position.set(51, 5.3, 0);
     this.group.add(this.message);
     this.drawMessage('');
+  }
+
+  public setRecipientStyle(style: LanternStyle): void {
+    const material = this.pools[0].material as THREE.MeshBasicMaterial;
+    material.map?.dispose();
+    material.map = identityPool(style, '255,173,80');
+    material.needsUpdate = true;
+    this.pools[0].rotation.set(-Math.PI / 2, 0, 0);
+    if (style === 'carp' || style === 'butterfly') this.pools[0].rotateZ(Math.PI / 2);
   }
 
   public drawMessage(text: string): void {
@@ -131,12 +152,12 @@ export class FinaleMoment {
     text: string, time: number): void {
     this.drawMessage(text);
     this.pools.forEach((pool, i) => {
-      pool.position.z = (i === 0 ? -1 : 1) * (1.05 - together * 0.48);
-      (pool.material as THREE.MeshBasicMaterial).opacity = together * (0.78 +
-        Math.sin(time * 1.5 + i) * 0.035);
+      pool.position.z = (i === 0 ? -1 : 1) * (1.42 - overlap * 0.85);
+      (pool.material as THREE.MeshBasicMaterial).opacity = together * (1 - overlap * .88) *
+        (0.78 + Math.sin(time * 1.5 + i) * 0.035);
     });
     this.star.scale.setScalar(0.62 + overlap * 0.55);
-    (this.star.material as THREE.MeshBasicMaterial).opacity = overlap * 0.9;
+    (this.star.material as THREE.MeshBasicMaterial).opacity = overlap * overlap * 0.9;
     (this.message.material as THREE.MeshBasicMaterial).opacity = messageOpacity;
   }
 

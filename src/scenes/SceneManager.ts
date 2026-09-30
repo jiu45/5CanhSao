@@ -17,6 +17,7 @@ import { disposeSceneResources } from '../utils/disposeSceneResources';
 import { prepareSceneForReveal, primeSceneFirstFrame } from '../utils/prepareSceneForReveal';
 import { SceneTransitionCurtain } from '../ui/SceneTransitionCurtain';
 import type { AppRenderer } from '../core/Renderer';
+import type { LanternStyle } from '../props/LanternIdentity';
 
 export enum GameSceneId {
   TIME_TRAVEL = 0,
@@ -63,7 +64,7 @@ export class SceneManager {
   }
 
   public goToScene(sceneId: GameSceneId, existingRoom?: RoomManager,
-    inheritedSwitches?: { local: boolean; remote: boolean },
+    inheritedSwitches?: { local: boolean; remote: boolean; recipientStyle?: LanternStyle },
     phase7Handoff?: Phase7GateHandoff) {
     console.log('[SCENE MANAGER] Switching from', this.currentSceneId, 'to', sceneId);
     // Retire the previous line at the covered scene boundary, before the new
@@ -238,7 +239,7 @@ export class SceneManager {
   }
 
   private async transitionToScene(sceneId: GameSceneId, existingRoom?: RoomManager,
-    inheritedSwitches?: { local: boolean; remote: boolean },
+    inheritedSwitches?: { local: boolean; remote: boolean; recipientStyle?: LanternStyle },
     phase7Handoff?: Phase7GateHandoff): Promise<void> {
     if (this.transitionPending) return;
     this.transitionPending = true;

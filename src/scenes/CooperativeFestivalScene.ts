@@ -14,6 +14,8 @@
 import * as THREE from 'three';
 import { IScene } from './BaseScene';
 import { StarLantern } from '../props/StarLantern';
+import { isLanternStyle, readRecipientLanternStyle, type LanternStyle } from '../props/LanternIdentity';
+import { drawLanternSilhouette } from '../props/LanternSilhouetteArt';
 import { ModernStarLantern } from '../props/ModernStarLantern';
 import { Moon } from '../props/Moon';
 import { DistantFestivalVista } from '../props/DistantFestivalVista';
@@ -73,6 +75,8 @@ export class CooperativeFestivalScene implements IScene {
   private remoteInterpolator: RemotePlayerInterpolator;
   private togetherHelper: TogetherModeHelper;
   public role: PlayerRole = 'host';
+  private recipientStyle: LanternStyle = 'star';
+  private hudRecipientStyle: LanternStyle | null = null;
   public isHost: boolean = true;
   public isGuest: boolean = false;
 
@@ -323,10 +327,11 @@ export class CooperativeFestivalScene implements IScene {
     this.role = this.roomManager.role ?? 'host';
     this.isHost = this.role === 'host';
     this.isGuest = !this.isHost;
+    if (this.isHost) this.recipientStyle = readRecipientLanternStyle();
 
     if (this.isHost) {
       // Host: Traditional handcrafted bamboo candle lantern (Coral red wings, golden bamboo frame, warm core)
-      this.playerLantern = new StarLantern();
+      this.playerLantern = new StarLantern(this.recipientStyle);
       (this.playerLantern as StarLantern).setStep(4);
       (this.playerLantern as StarLantern).setModernized(true);
       (this.playerLantern as StarLantern).setElectricLit(false);
@@ -343,7 +348,7 @@ export class CooperativeFestivalScene implements IScene {
       this.playerLantern.group.scale.setScalar(0.48);
 
       // Companion: Traditional handcrafted bamboo candle lantern (Coral red wings, golden bamboo frame)
-      this.remoteLantern = new StarLantern();
+      this.remoteLantern = new StarLantern(this.recipientStyle);
       (this.remoteLantern as StarLantern).setStep(4);
       (this.remoteLantern as StarLantern).setModernized(true);
       (this.remoteLantern as StarLantern).setElectricLit(false);
@@ -384,6 +389,7 @@ export class CooperativeFestivalScene implements IScene {
         this.role = newRole;
         this.isHost = newRole === 'host';
         this.isGuest = !this.isHost;
+        if (this.isHost) this.recipientStyle = readRecipientLanternStyle();
         this.rebuildLanternAssignments();
         this.updateHudBadges();
       }
@@ -405,6 +411,8 @@ export class CooperativeFestivalScene implements IScene {
       this.overlay.setSubtitle('Một ngọn đèn nữa đã tìm đến bên bạn.', 4000);
       this.updateHudBadges();
       this.broadcastLocalState(1);
+      if (this.isHost) void this.roomManager.sendEvent(NetworkEventType.PLAYER_READY,
+        { extra: { recipientLanternStyle: this.recipientStyle } });
       if (this.isElectricSwitchOn) {
         void this.roomManager.sendEvent(NetworkEventType.SWITCH_TOGGLE, { switchOn: true });
       }
@@ -435,7 +443,20 @@ export class CooperativeFestivalScene implements IScene {
 
     // 5. Remote Discrete Event Reception
     this.roomManager.onRemoteEvent = (event: NetworkEventPacket) => {
-      if (event.type === NetworkEventType.LANTERN_PICKUP) {
+      if (event.type === NetworkEventType.PLAYER_READY) {
+        if (this.isGuest && isLanternStyle(event.payload?.extra?.recipientLanternStyle)) {
+          const style = event.payload.extra.recipientLanternStyle as LanternStyle;
+          if (style !== this.recipientStyle) {
+            this.recipientStyle = style;
+            this.rebuildLanternAssignments();
+            this.updatePositions();
+            this.updateHudBadges();
+          }
+        } else if (this.isHost) {
+          void this.roomManager.sendEvent(NetworkEventType.PLAYER_READY,
+            { extra: { recipientLanternStyle: this.recipientStyle } });
+        }
+      } else if (event.type === NetworkEventType.LANTERN_PICKUP) {
         this.remoteInterpolator.onLanternHeldChanged(true);
       } else if (event.type === NetworkEventType.LANTERN_RELEASE) {
         this.remoteInterpolator.onLanternHeldChanged(false);
@@ -465,9 +486,11 @@ export class CooperativeFestivalScene implements IScene {
   private rebuildLanternAssignments(): void {
     this.scene.remove(this.playerLantern.group);
     this.scene.remove(this.remoteLantern.group);
+    this.playerLantern.dispose();
+    this.remoteLantern.dispose();
 
     if (this.isHost) {
-      this.playerLantern = new StarLantern();
+      this.playerLantern = new StarLantern(this.recipientStyle);
       (this.playerLantern as StarLantern).setStep(4);
       (this.playerLantern as StarLantern).setModernized(true);
       (this.playerLantern as StarLantern).setElectricLit(this.isElectricSwitchOn);
@@ -475,7 +498,7 @@ export class CooperativeFestivalScene implements IScene {
       this.remoteLantern = new ModernStarLantern();
     } else {
       this.playerLantern = new ModernStarLantern();
-      this.remoteLantern = new StarLantern();
+      this.remoteLantern = new StarLantern(this.recipientStyle);
       (this.remoteLantern as StarLantern).setStep(4);
       (this.remoteLantern as StarLantern).setModernized(true);
       (this.remoteLantern as StarLantern).setElectricLit(this.isRemoteSwitchOn);
@@ -1020,8 +1043,9 @@ export class CooperativeFestivalScene implements IScene {
     return this.roomManager;
   }
 
-  public getSwitchState(): { local: boolean; remote: boolean } {
-    return { local: this.isElectricSwitchOn, remote: this.isRemoteSwitchOn };
+  public getSwitchState(): { local: boolean; remote: boolean; recipientStyle: LanternStyle } {
+    return { local: this.isElectricSwitchOn, remote: this.isRemoteSwitchOn,
+      recipientStyle: this.recipientStyle };
   }
 
   // =========================================================================
@@ -1223,13 +1247,13 @@ export class CooperativeFestivalScene implements IScene {
           <button class="coop-btn-copy coop-btn-share">Mời người cùng rước đèn</button>
           <button class="coop-btn-copy room-invite-link" data-testid="room-invite-link">Sao chép liên kết</button>
         </div>
-        <svg class="coop-wait-art" viewBox="0 0 360 84" role="img" aria-label="Một chiếc đèn đang chờ chiếc thứ hai">
+        <svg class="coop-wait-art" viewBox="0 0 360 84" role="img" aria-label="Chiếc đèn của em đang chờ chiếc đèn ông sao của anh">
           <defs><radialGradient id="coop-moon-glow"><stop stop-color="#e8e9e5" stop-opacity=".38"/><stop offset="1" stop-color="#e8e9e5" stop-opacity="0"/></radialGradient></defs>
           <rect width="360" height="84" fill="#0b1930"/>
           <path d="M0 70 Q90 39 180 69 T360 67 V84 H0Z" fill="#172f48"/>
           <circle cx="180" cy="21" r="29" fill="url(#coop-moon-glow)"/><circle cx="180" cy="21" r="10" fill="#e9e7d8"/>
           <path class="light-path" d="M103 63 Q180 37 257 63" fill="none" stroke="#f9c56d" stroke-width="2" stroke-dasharray="4 7"/>
-          <path d="M103 28 L110 48 L132 48 L114 60 L121 79 L103 67 L85 79 L92 60 L74 48 L96 48Z" fill="#f5a642" stroke="#ffdf88" stroke-width="2"/>
+          <image class="recipient-light" x="68" y="19" width="70" height="65" preserveAspectRatio="xMidYMid meet"/>
           <circle cx="103" cy="55" r="20" fill="#ffca6a" opacity=".16"/>
           <g class="second-light"><path d="M257 28 L264 48 L286 48 L268 60 L275 79 L257 67 L239 79 L246 60 L228 48 L250 48Z" fill="#f8bd67" stroke="#fff2b0" stroke-width="2"/>
           <circle cx="257" cy="55" r="20" fill="#ffca6a" opacity=".16"/></g>
@@ -1279,6 +1303,11 @@ export class CooperativeFestivalScene implements IScene {
 
   private updateHudBadges(): void {
     if (!this.hudContainerEl) return;
+    if (this.hudRecipientStyle !== this.recipientStyle) {
+      this.hudRecipientStyle = this.recipientStyle;
+      this.hudContainerEl.querySelector('.recipient-light')?.setAttribute('href',
+        drawLanternSilhouette(this.recipientStyle, true).toDataURL('image/png'));
+    }
     const statusEl = this.hudContainerEl.querySelector('#coop-presence-status');
     this.hudContainerEl.querySelector('.coop-badge-card')?.classList.toggle('connected', this.remoteLanternVisible);
     const actionsEl = this.hudContainerEl.querySelector<HTMLElement>('#coop-invite-actions');

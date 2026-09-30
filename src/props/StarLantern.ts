@@ -1,8 +1,14 @@
 import * as THREE from 'three';
 import { TextureGenerator } from '../utils/TextureGenerator';
+import { createLanternArtTexture } from './LanternSilhouetteArt';
+import type { LanternStyle } from './LanternIdentity';
 
 export class StarLantern {
   public group: THREE.Group;
+  public readonly style: LanternStyle;
+  private shapedPaperMat?: THREE.MeshBasicMaterial;
+  private shapedGlowMat?: THREE.MeshBasicMaterial;
+  private shapedTextures: THREE.CanvasTexture[] = [];
   
   // Component groups for step-by-step assembly
   private bambooSkeletonGroup: THREE.Group;
@@ -38,7 +44,8 @@ export class StarLantern {
   private candleWaxMat: THREE.MeshStandardMaterial;
   private flameMat: THREE.MeshBasicMaterial;
 
-  constructor() {
+  constructor(style: LanternStyle = 'star') {
+    this.style = style;
     this.group = new THREE.Group();
 
     this.bambooSkeletonGroup = new THREE.Group();
@@ -111,8 +118,12 @@ export class StarLantern {
     });
 
     // Create 3D geometry
-    this.buildBambooSkeleton();
-    this.buildPaperSkin();
+    if (style === 'star') {
+      this.buildBambooSkeleton();
+      this.buildPaperSkin();
+    } else {
+      this.buildShapedPapercraft();
+    }
     this.buildBindings();
     this.buildCandle();
 
@@ -138,6 +149,40 @@ export class StarLantern {
     this.flameMesh.position.set(0, 0.0, 0);
     this.flameMesh.visible = false;
     this.candleGroup.add(this.flameMesh);
+  }
+
+  private buildShapedPapercraft(): void {
+    const bamboo = createLanternArtTexture(this.style, false);
+    const paper = createLanternArtTexture(this.style, true);
+    this.shapedTextures.push(bamboo, paper);
+    const frameMat = new THREE.MeshBasicMaterial({ map: bamboo,
+      transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    this.shapedPaperMat = new THREE.MeshBasicMaterial({ map: paper,
+      transparent: true, depthWrite: false, side: THREE.DoubleSide,
+      color: 0xd9c0aa, opacity: .94 });
+    const glowCanvas = document.createElement('canvas');
+    glowCanvas.width = glowCanvas.height = 128;
+    const ctx = glowCanvas.getContext('2d')!;
+    const glow = ctx.createRadialGradient(64, 64, 5, 64, 64, 63);
+    glow.addColorStop(0, 'rgba(255,232,173,.68)');
+    glow.addColorStop(.48, 'rgba(255,157,76,.25)');
+    glow.addColorStop(1, 'rgba(255,157,76,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, 128, 128);
+    const glowTexture = new THREE.CanvasTexture(glowCanvas);
+    this.shapedTextures.push(glowTexture);
+    this.shapedGlowMat = new THREE.MeshBasicMaterial({ map: glowTexture,
+      transparent: true, opacity: .08, depthWrite: false,
+      blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+    this.paperSkinGroup.add(new THREE.Mesh(new THREE.PlaneGeometry(2.5, 2.5), this.shapedGlowMat));
+    const plane = new THREE.PlaneGeometry(2, 2);
+    for (const z of [-.085, .085]) {
+      const frame = new THREE.Mesh(plane, frameMat);
+      frame.position.z = z;
+      this.bambooSkeletonGroup.add(frame);
+      const skin = new THREE.Mesh(plane, this.shapedPaperMat);
+      skin.position.z = z < 0 ? z + .008 : z - .008;
+      this.paperSkinGroup.add(skin);
+    }
   }
 
   // Calculate 5 star vertices with top apex pointing up
@@ -335,6 +380,8 @@ export class StarLantern {
     this.paperRedMat.emissiveIntensity = 1.1;
     this.paperYellowMat.emissive.setHex(0xf59e0b);
     this.paperYellowMat.emissiveIntensity = 1.6;
+    if (this.shapedPaperMat) this.shapedPaperMat.color.setHex(0xfff1d4);
+    if (this.shapedGlowMat) this.shapedGlowMat.opacity = .72;
   }
 
   public extinguish(): void {
@@ -344,6 +391,8 @@ export class StarLantern {
     this.candleLight.intensity = 0.03;
     this.paperRedMat.emissiveIntensity = 0.04;
     this.paperYellowMat.emissiveIntensity = 0.05;
+    if (this.shapedPaperMat) this.shapedPaperMat.color.setHex(0x80736e);
+    if (this.shapedGlowMat) this.shapedGlowMat.opacity = .06;
   }
 
   public setModernized(modern: boolean) {
@@ -372,6 +421,11 @@ export class StarLantern {
       this.paperYellowMat.emissiveIntensity = 1.65;
       this.paperYellowMat.roughness = 0.08;
       this.paperYellowMat.transmission = 0.78;
+      if (this.shapedPaperMat) {
+        this.shapedPaperMat.color.setHex(0xffffff);
+        this.shapedPaperMat.opacity = .98;
+      }
+      if (this.shapedGlowMat) this.shapedGlowMat.opacity = .78;
     }
   }
 
@@ -382,6 +436,8 @@ export class StarLantern {
     this.candleLight.intensity = lit ? 3.8 : 0.12;
     this.paperRedMat.emissiveIntensity = lit ? 1.35 : 0.15;
     this.paperYellowMat.emissiveIntensity = lit ? 1.65 : 0.2;
+    if (this.shapedPaperMat) this.shapedPaperMat.color.setHex(lit ? 0xffffff : 0x807975);
+    if (this.shapedGlowMat) this.shapedGlowMat.opacity = lit ? .78 : .1;
   }
 
   public update(delta: number, windFactor: number = 0) {
@@ -399,6 +455,8 @@ export class StarLantern {
       this.candleLight.intensity = (2.8 * lightFactor);
       this.paperRedMat.opacity = 0.85 * alpha;
       this.paperYellowMat.opacity = 0.85 * alpha;
+      if (this.shapedPaperMat) this.shapedPaperMat.opacity = .94 * alpha;
+      if (this.shapedGlowMat) this.shapedGlowMat.opacity = .7 * alpha;
       this.bambooMat.opacity = alpha;
       this.bambooMat.transparent = true;
       (this.flameMat as THREE.MeshBasicMaterial).opacity = alpha;
@@ -415,10 +473,17 @@ export class StarLantern {
       this.modernGlowTime += delta * 2.2;
       const breathingPulse = Math.sin(this.modernGlowTime) * 0.12;
       this.candleLight.intensity = 3.8 + breathingPulse;
+      if (this.shapedPaperMat) this.shapedPaperMat.opacity = .95 + breathingPulse * .12;
+      if (this.shapedGlowMat) this.shapedGlowMat.opacity = .72 + breathingPulse * .26;
       return;
     }
 
     this.flameTime += delta * 8;
+    if (this.shapedPaperMat) {
+      const sway = Math.sin(this.flameTime * .14) * (this.style === 'butterfly' ? .024 : .013);
+      this.bambooSkeletonGroup.rotation.z = sway;
+      this.paperSkinGroup.rotation.z = sway;
+    }
 
     // Smooth transition of hand shielding
     const targetOpacity = this.isShielded ? 0.95 : 0.0;
@@ -437,6 +502,9 @@ export class StarLantern {
     this.candleLight.intensity = (2.8 + flicker * 0.7) * Math.max(0.2, 1 - clampedWind * 0.62);
     this.paperRedMat.emissiveIntensity = 1.1 * windGlow;
     this.paperYellowMat.emissiveIntensity = 1.6 * windGlow;
+    if (this.shapedPaperMat) this.shapedPaperMat.color.setRGB(
+      windGlow, .77 * windGlow + .15, .58 * windGlow + .28);
+    if (this.shapedGlowMat) this.shapedGlowMat.opacity = .7 * windGlow;
     this.candleLight.position.x = Math.sin(this.flameTime * 2.2) * 0.012 - clampedWind * 0.03;
     this.candleLight.position.y = Math.cos(this.flameTime * 2.8) * 0.01 - clampedWind * 0.02;
 
@@ -450,15 +518,25 @@ export class StarLantern {
   }
 
   public dispose(): void {
+    const geometries = new Set<THREE.BufferGeometry>();
+    const materials = new Set<THREE.Material>();
+    const textures = new Set<THREE.Texture>(this.shapedTextures);
     this.group.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        child.geometry?.dispose();
-        if (Array.isArray(child.material)) {
-          child.material.forEach(m => m.dispose());
-        } else {
-          child.material?.dispose();
-        }
+        geometries.add(child.geometry);
+        (Array.isArray(child.material) ? child.material : [child.material])
+          .forEach(material => materials.add(material));
       }
     });
+    materials.forEach(material => {
+      for (const key of ['map', 'emissiveMap', 'alphaMap'] as const) {
+        const texture = (material as unknown as Record<string, unknown>)[key];
+        if (texture instanceof THREE.Texture) textures.add(texture);
+      }
+    });
+    geometries.forEach(geometry => geometry.dispose());
+    textures.forEach(texture => texture.dispose());
+    materials.forEach(material => material.dispose());
+    this.candleLight.shadow.map?.dispose();
   }
 }

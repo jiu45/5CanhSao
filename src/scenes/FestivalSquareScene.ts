@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { IScene } from './BaseScene';
 import { StarLantern } from '../props/StarLantern';
+import { readRecipientLanternStyle } from '../props/LanternIdentity';
 import { Moon } from '../props/Moon';
 import { LionCharacter } from '../props/LionCharacter';
 import { TextureGenerator } from '../utils/TextureGenerator';
@@ -158,7 +159,7 @@ export class FestivalSquareScene implements IScene {
     this.scene.add(this.camera);
 
     // 1. Player's Hero Star Lantern (Attached to camera in lower-right corner in spectator view)
-    this.lantern = new StarLantern();
+    this.lantern = new StarLantern(readRecipientLanternStyle());
     this.lantern.setStep(4);
     this.lantern.group.scale.set(0.33, 0.33, 0.33);
     this.lantern.group.position.set(0.55, -0.49, -0.80);

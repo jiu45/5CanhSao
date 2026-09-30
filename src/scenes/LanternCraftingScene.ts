@@ -7,6 +7,8 @@ import { StoryOverlay } from '../ui/StoryOverlay';
 import { CraftingUI } from '../ui/CraftingUI';
 import { StoryConfig } from '../config/StoryConfig';
 import { audioManager } from '../audio/AudioManager';
+import { LanternFrameChoice } from '../ui/LanternFrameChoice';
+import { LANTERN_NAMES, saveRecipientLanternStyle, type LanternStyle } from '../props/LanternIdentity';
 
 export class LanternCraftingScene implements IScene {
   public scene: THREE.Scene;
@@ -20,6 +22,8 @@ export class LanternCraftingScene implements IScene {
 
   private currentStep: number = 0;
   private isIgnited: boolean = false;
+  private selectedStyle: LanternStyle | null = null;
+  private frameChoice: LanternFrameChoice | null = null;
   private targetCamPos: THREE.Vector3;
   private targetCamLookAt: THREE.Vector3;
   private raycaster = new THREE.Raycaster();
@@ -100,6 +104,7 @@ export class LanternCraftingScene implements IScene {
     this.currentStep = 0;
     this.isIgnited = false;
     this.lantern.setStep(0);
+    this.selectedStyle = null;
     this.room.setCraftStep(0);
     window.addEventListener('pointerdown', this.onPropPointerDown);
 
@@ -112,6 +117,26 @@ export class LanternCraftingScene implements IScene {
     this.craftingUI.onStepCompleted = (step: number) => {
       this.handleStep(step);
     };
+    this.craftingUI.onBeforeAdvance = nextStep => {
+      if (nextStep !== 1 || this.selectedStyle) return true;
+      if (!this.frameChoice) this.frameChoice = new LanternFrameChoice(style => this.chooseFrame(style));
+      return false;
+    };
+  }
+
+  private chooseFrame(style: LanternStyle): void {
+    this.selectedStyle = style;
+    saveRecipientLanternStyle(style);
+    this.scene.remove(this.lantern.group);
+    this.lantern.dispose();
+    this.lantern = new StarLantern(style);
+    this.lantern.group.scale.setScalar(0.62);
+    this.lantern.group.position.set(0, 1.38, 0.1);
+    this.lantern.group.rotation.x = -Math.PI * .04;
+    this.scene.add(this.lantern.group);
+    this.craftingUI.setFrameDescription(`Uốn nan thành ${LANTERN_NAMES[style].toLowerCase()}`);
+    this.frameChoice = null;
+    this.craftingUI.advanceStep();
   }
 
   private handleStep(step: number) {
@@ -122,7 +147,9 @@ export class LanternCraftingScene implements IScene {
     switch (step) {
       case 1:
         audioManager.playBambooSnap();
-        this.overlay.setSubtitle(StoryConfig.craftingSubtitles.step1, 4000);
+        this.overlay.setSubtitle(this.selectedStyle === 'star'
+          ? StoryConfig.craftingSubtitles.step1
+          : `Những thanh nan tre khép lại thành hình ${LANTERN_NAMES[this.selectedStyle!].replace('Đèn ', '').toLowerCase()}.`, 4000);
         break;
       case 2:
         audioManager.playPaperRustle();
@@ -179,6 +206,9 @@ export class LanternCraftingScene implements IScene {
     this.timerIds.forEach(id => clearTimeout(id));
     this.timerIds = [];
     this.craftingUI.hide();
+    this.craftingUI.onBeforeAdvance = undefined;
+    this.frameChoice?.destroy();
+    this.frameChoice = null;
     window.removeEventListener('pointerdown', this.onPropPointerDown);
     this.overlay.clearSubtitle();
   }

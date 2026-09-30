@@ -3,6 +3,7 @@ import type { IScene } from './BaseScene';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { Phase6PuzzleOverlay } from '../ui/Phase6PuzzleOverlay';
 import { StarLantern } from '../props/StarLantern';
+import { isLanternStyle, readRecipientLanternStyle, type LanternStyle } from '../props/LanternIdentity';
 import { ModernStarLantern } from '../props/ModernStarLantern';
 import { DistantFestivalVista } from '../props/DistantFestivalVista';
 import { FestivalPromenadeSet } from '../props/FestivalPromenadeSet';
@@ -18,7 +19,7 @@ import { ELDER_PROGRESS, PHASE6_ROUTES, Phase6RouteId, SEPARATION_PROGRESS,
   splitRoute, rejoinRoute, type Phase6RouteId as RouteId } from './Phase6Routes';
 
 type LocalSave = { routeId: RouteId; progressT: number; sharedState?: Phase6SharedState;
-  localSwitchOn?: boolean; remoteSwitchOn?: boolean };
+  localSwitchOn?: boolean; remoteSwitchOn?: boolean; recipientStyle?: LanternStyle };
 
 export type Phase7GateHandoff = {
   scene: THREE.Scene;
@@ -40,6 +41,7 @@ export class Phase6FestivalScene implements IScene {
   public remoteLanternVisible = false;
   public togetherMode: 'TOGETHER_MODE' | 'SEPARATED_MODE' = 'TOGETHER_MODE';
   public role: PlayerRole;
+  private recipientStyle: LanternStyle = 'star';
   public isMoving = false;
   public lanternHeld = false;
   public playerLantern!: StarLantern | ModernStarLantern;
@@ -84,13 +86,17 @@ export class Phase6FestivalScene implements IScene {
   private boundPointerUp = (event: PointerEvent) => this.onPointer(event, false);
 
   constructor(private camera: THREE.PerspectiveCamera, private overlay: StoryOverlay,
-    inheritedRoom?: RoomManager, inheritedSwitches?: { local: boolean; remote: boolean },
+    inheritedRoom?: RoomManager, inheritedSwitches?: { local: boolean; remote: boolean;
+      recipientStyle?: LanternStyle },
     private onGrandPlaza?: (handoff: Phase7GateHandoff) => void) {
     this.roomManager = inheritedRoom ?? new RoomManager();
     this.inheritedRoom = !!inheritedRoom;
     this.role = this.roomManager.role ?? 'host';
     this.previousFov = camera.fov;
     const saved = this.readSave();
+    this.recipientStyle = this.role === 'host' ? readRecipientLanternStyle() :
+      (isLanternStyle(inheritedSwitches?.recipientStyle) ? inheritedSwitches.recipientStyle :
+        isLanternStyle(saved?.recipientStyle) ? saved.recipientStyle : 'star');
     this.localSwitchOn = inheritedSwitches?.local ?? saved?.localSwitchOn ?? true;
     this.remoteSwitchOn = inheritedSwitches?.remote ?? saved?.remoteSwitchOn ?? true;
     this.phase6State = new Phase6StateController(saved?.sharedState);
@@ -149,15 +155,18 @@ export class Phase6FestivalScene implements IScene {
   }
 
   private setupLanterns(): void {
-    if (this.playerLantern) { this.scene.remove(this.playerLantern.group, this.remoteLantern.group); }
+    if (this.playerLantern) {
+      this.scene.remove(this.playerLantern.group, this.remoteLantern.group);
+      this.playerLantern.dispose(); this.remoteLantern.dispose();
+    }
     if (this.role === 'host') {
-      const local = new StarLantern(); local.setStep(4); local.setModernized(true);
+      const local = new StarLantern(this.recipientStyle); local.setStep(4); local.setModernized(true);
       local.setElectricLit(this.localSwitchOn);
       this.playerLantern = local;
       const remote = new ModernStarLantern(); remote.setLit(this.remoteSwitchOn, true); this.remoteLantern = remote;
     } else {
       const local = new ModernStarLantern(); local.setLit(this.localSwitchOn, true); this.playerLantern = local;
-      const remote = new StarLantern(); remote.setStep(4); remote.setModernized(true);
+      const remote = new StarLantern(this.recipientStyle); remote.setStep(4); remote.setModernized(true);
       remote.setElectricLit(this.remoteSwitchOn);
       this.remoteLantern = remote;
     }
@@ -171,10 +180,29 @@ export class Phase6FestivalScene implements IScene {
     });
   }
 
+  private applyRecipientStyle(style: LanternStyle): void {
+    if (this.recipientStyle === style) return;
+    this.recipientStyle = style;
+    if (this.role !== 'guest' || !(this.remoteLantern instanceof StarLantern)) return;
+    const previous = this.remoteLantern;
+    const replacement = new StarLantern(style);
+    replacement.setStep(4); replacement.setModernized(true);
+    replacement.setElectricLit(this.remoteSwitchOn);
+    replacement.group.position.copy(previous.group.position);
+    replacement.group.rotation.copy(previous.group.rotation);
+    replacement.group.scale.copy(previous.group.scale);
+    replacement.group.visible = previous.group.visible;
+    this.scene.remove(previous.group); this.scene.add(replacement.group);
+    previous.dispose(); this.remoteLantern = replacement;
+    this.persistState();
+  }
+
   private setupNetwork(): void {
     this.roomManager.onRoleAssigned = role => {
       if (role === this.role) return;
-      this.role = role; this.setupLanterns(); this.updateHud();
+      this.role = role;
+      if (role === 'host') this.recipientStyle = readRecipientLanternStyle();
+      this.setupLanterns(); this.updateHud();
     };
     this.roomManager.onCompanionJoined = () => {
       this.remoteInterpolator.reset();
@@ -205,7 +233,8 @@ export class Phase6FestivalScene implements IScene {
   private announceReady(): void {
     if (!this.roomManager.isConnected) return;
     void this.roomManager.sendEvent(NetworkEventType.PHASE6_READY,
-      { extra: { role: this.role, switchOn: this.localSwitchOn } });
+      { extra: { role: this.role, switchOn: this.localSwitchOn,
+        recipientLanternStyle: this.role === 'host' ? this.recipientStyle : undefined } });
     this.readyBroadcastElapsed = 0;
   }
 
@@ -227,6 +256,9 @@ export class Phase6FestivalScene implements IScene {
   private handleRemoteEvent(event: NetworkEventPacket): void {
     const role: PlayerRole = this.role === 'host' ? 'guest' : 'host';
     if (event.type === NetworkEventType.PHASE6_READY) {
+      if (this.role === 'guest' && isLanternStyle(event.payload?.extra?.recipientLanternStyle)) {
+        this.applyRecipientStyle(event.payload.extra.recipientLanternStyle);
+      }
       if (typeof event.payload?.extra?.switchOn === 'boolean') {
         this.remoteSwitchOn = event.payload.extra.switchOn;
         if (this.remoteLantern instanceof ModernStarLantern) this.remoteLantern.setLit(this.remoteSwitchOn, true);
@@ -655,7 +687,8 @@ export class Phase6FestivalScene implements IScene {
     try {
       const save: LocalSave = { routeId: this.routeId, progressT: this.progressT,
         sharedState: this.role === 'host' ? this.phase6State.state : undefined,
-        localSwitchOn: this.localSwitchOn, remoteSwitchOn: this.remoteSwitchOn };
+        localSwitchOn: this.localSwitchOn, remoteSwitchOn: this.remoteSwitchOn,
+        recipientStyle: this.recipientStyle };
       sessionStorage.setItem(this.saveKey(), JSON.stringify(save));
     } catch { /* The room remains playable when browser storage is disabled. */ }
   }

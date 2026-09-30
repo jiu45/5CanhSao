@@ -12,6 +12,8 @@ import { ModernStarLantern } from '../props/ModernStarLantern';
 import { Phase6RouteId } from './Phase6Routes';
 import { audioManager } from '../audio/AudioManager';
 import finalWishText from '../content/final-wish.txt?raw';
+import { readRecipientLanternStyle, type LanternStyle } from '../props/LanternIdentity';
+import { drawLanternSilhouette } from '../props/LanternSilhouetteArt';
 
 const smooth = (start: number, end: number, value: number): number => {
   const t = THREE.MathUtils.clamp((value - start) / (end - start), 0, 1);
@@ -68,6 +70,7 @@ export class GrandFestivalScene implements IScene {
   private destroyed = false;
   public isFinished = false;
   private readonly role: 'host' | 'guest';
+  private readonly recipientStyle: LanternStyle;
   private fadeLayer!: HTMLDivElement;
   private endCard!: HTMLDivElement;
   private pauseLetterButton!: HTMLButtonElement;
@@ -95,7 +98,7 @@ export class GrandFestivalScene implements IScene {
       this.playerLantern = handoff.playerLantern;
       this.remoteLantern = handoff.remoteLantern;
     } else {
-      const handmade = new StarLantern();
+      const handmade = new StarLantern(readRecipientLanternStyle());
       handmade.setStep(4); handmade.setModernized(true); handmade.setElectricLit(true);
       const electric = new ModernStarLantern(); electric.setLit(true, true);
       this.playerLantern = handmade; this.remoteLantern = electric;
@@ -114,6 +117,10 @@ export class GrandFestivalScene implements IScene {
       this.camera.fov = 62; this.camera.updateProjectionMatrix();
     }
     this.environment.setStoryVisibility(Phase6RouteId.final);
+    const handmade = this.playerLantern instanceof StarLantern ? this.playerLantern :
+      this.remoteLantern instanceof StarLantern ? this.remoteLantern : null;
+    this.recipientStyle = handmade?.style ?? 'star';
+    this.finale.setRecipientStyle(this.recipientStyle);
     this.environment.setGatePresence(true, true, true);
     this.remoteLantern.group.visible = true;
     this.previousFov = camera.fov;
@@ -148,7 +155,7 @@ export class GrandFestivalScene implements IScene {
     this.endCard = document.createElement('div');
     this.endCard.className = 'final-end-card';
     this.endCard.setAttribute('role', 'img');
-    this.endCard.setAttribute('aria-label', 'Hai chiếc đèn ông sao bên nhau dưới cùng một vầng trăng');
+    this.endCard.setAttribute('aria-label', 'Hai chiếc đèn bên nhau dưới cùng một vầng trăng');
     this.endCard.innerHTML = `
       <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
         <defs>
@@ -195,6 +202,21 @@ export class GrandFestivalScene implements IScene {
           <circle r="14" fill="#e2f8eb"/><path d="M0 52 V118" stroke="#8a5738" stroke-width="7"/>
         </g>
       </svg>`;
+    if (this.recipientStyle !== 'star') {
+      const mount = this.endCard.querySelector<SVGGElement>('g[transform="translate(552 522)"]');
+      if (mount) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const stem = document.createElementNS(ns, 'path');
+        stem.setAttribute('d', 'M0 39 V118');
+        stem.setAttribute('stroke', '#8a5738');
+        stem.setAttribute('stroke-width', '7');
+        const lantern = document.createElementNS(ns, 'image');
+        lantern.setAttribute('href', drawLanternSilhouette(this.recipientStyle, true).toDataURL('image/png'));
+        lantern.setAttribute('x', '-80'); lantern.setAttribute('y', '-84');
+        lantern.setAttribute('width', '160'); lantern.setAttribute('height', '160');
+        mount.replaceChildren(stem, lantern);
+      }
+    }
     document.body.appendChild(this.endCard);
     this.pauseLetterButton = document.createElement('button');
     this.pauseLetterButton.className = 'final-letter-control';

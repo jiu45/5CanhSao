@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { disposeSceneResources } from '../utils/disposeSceneResources';
 import { IScene } from './BaseScene';
 import { StarLantern } from '../props/StarLantern';
+import { readRecipientLanternStyle } from '../props/LanternIdentity';
 import { Moon } from '../props/Moon';
 import { TextureGenerator } from '../utils/TextureGenerator';
 import { audioManager } from '../audio/AudioManager';
@@ -126,7 +127,7 @@ export class ModernArrivalScene implements IScene {
     this.scene.add(this.moon.group);
 
     // 2. Handheld Star Lantern (Starts candlelit, scales down to 0.34 for elegant hand size)
-    this.lantern = new StarLantern();
+    this.lantern = new StarLantern(readRecipientLanternStyle());
     this.lantern.setStep(4);
     this.lantern.group.scale.setScalar(0.34);
     this.scene.add(this.lantern.group);

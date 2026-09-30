@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { IScene } from './BaseScene';
 import { RoomDiorama } from '../props/RoomDiorama';
 import { StarLantern } from '../props/StarLantern';
+import { readRecipientLanternStyle, THRESHOLD_HOLD } from '../props/LanternIdentity';
 import { Moon } from '../props/Moon';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { StoryConfig } from '../config/StoryConfig';
@@ -37,6 +38,7 @@ export class DoorRevealScene implements IScene {
   private isDoorOpening: boolean = false;
   private isWalkingThroughThreshold: boolean = false;
   private walkTime: number = 0;
+  private holdHeight = 1.22;
   private outsideWarmLight: THREE.PointLight;
   private templeCourtyardLight: THREE.PointLight;
   private outsideCourtyard: THREE.Group;
@@ -72,10 +74,14 @@ export class DoorRevealScene implements IScene {
     this.scene.add(this.room.group);
 
     // Star lantern held by player facing the door
-    this.lantern = new StarLantern();
+    const lanternStyle = readRecipientLanternStyle();
+    this.lantern = new StarLantern(lanternStyle);
     this.lantern.setStep(4);
-    this.lantern.group.scale.set(0.68, 0.68, 0.68);
-    this.lantern.group.position.set(0.48, 1.22, -1.9);
+    const hold = THRESHOLD_HOLD[lanternStyle];
+    this.holdHeight = hold.height;
+    this.lantern.group.scale.setScalar(hold.scale);
+    this.lantern.group.position.set(lanternStyle === 'star' ? .48 : .34,
+      this.holdHeight, -1.9);
     this.lantern.group.rotation.set(0, -Math.PI * 0.25, 0);
     this.scene.add(this.lantern.group);
 
@@ -378,7 +384,7 @@ export class DoorRevealScene implements IScene {
       this.camera.position.y = 1.85 + Math.sin(this.walkTime * 4.0) * 0.025;
 
       this.lantern.group.position.z -= walkSpeed;
-      this.lantern.group.position.y = 1.22 + Math.sin(this.walkTime * 4.0) * 0.04;
+      this.lantern.group.position.y = this.holdHeight + Math.sin(this.walkTime * 4.0) * 0.04;
       this.lantern.group.rotation.z = Math.sin(this.walkTime * 2.0) * 0.08;
 
       // When camera successfully glides past threshold step (z <= -5.8), complete scene
@@ -390,7 +396,7 @@ export class DoorRevealScene implements IScene {
     } else {
       // Idle lantern sway in hand
       this.lantern.group.rotation.z = Math.sin(_time * 2.2) * 0.04;
-      this.lantern.group.position.y = 1.22 + Math.sin(_time * 3.0) * 0.015;
+      this.lantern.group.position.y = this.holdHeight + Math.sin(_time * 3.0) * 0.015;
     }
 
     // 3. Sway bamboo groves softly in the breeze
