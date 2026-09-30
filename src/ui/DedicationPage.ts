@@ -4,7 +4,6 @@ import { audioManager } from '../audio/AudioManager';
 export class DedicationPage {
   private readonly root: HTMLElement;
   private readonly line: HTMLElement;
-  private readonly name: HTMLElement;
   private onOpen: (() => void) | null = null;
   private frame = 0;
   private lastFrame = 0;
@@ -19,11 +18,9 @@ export class DedicationPage {
     this.root.className = 'dedication-page';
     this.root.setAttribute('aria-label', 'Dành tặng maiixinh');
     this.root.innerHTML = `<div class="dedication-splash">
-      <p class="dedication-splash-line">Dành tặng</p>
-      <p class="dedication-splash-name">maiixinh</p>
+      <p class="dedication-splash-line">Dành tặng maiixinh</p>
     </div>`;
     this.line = this.root.querySelector('.dedication-splash-line')!;
-    this.name = this.root.querySelector('.dedication-splash-name')!;
     document.body.appendChild(this.root);
     this.root.addEventListener('pointerdown', () => {
       // An early tap may satisfy browser autoplay policy before the words appear.
@@ -51,17 +48,12 @@ export class DedicationPage {
     this.activeMs += Math.min(stamp - this.lastFrame, 100);
     this.lastFrame = stamp;
 
-    if (this.activeMs >= 850 && !this.line.classList.contains('visible') &&
-        !this.line.classList.contains('finished')) {
+    if (this.activeMs >= 850 && this.activeMs < 5200 &&
+        !this.line.classList.contains('visible')) {
       this.line.classList.add('visible');
       this.tryCue();
     }
-    if (this.activeMs >= 2200) {
-      this.line.classList.remove('visible');
-      this.line.classList.add('finished');
-    }
-    if (this.activeMs >= 2650 && this.activeMs < 5200) this.name.classList.add('visible');
-    if (this.activeMs >= 5200) this.name.classList.remove('visible');
+    if (this.activeMs >= 5200) this.line.classList.remove('visible');
     if (this.activeMs >= 5650) this.root.classList.add('leaving');
     if (this.activeMs >= 6350 && !this.moonStarted) {
       this.moonStarted = true;
@@ -88,8 +80,7 @@ export class DedicationPage {
     audioManager.stopDedicationCue();
     this.root.classList.add('instant');
     this.root.classList.remove('leaving');
-    this.line.classList.remove('visible', 'finished');
-    this.name.classList.remove('visible');
+    this.line.classList.remove('visible');
     requestAnimationFrame(() => this.root.classList.remove('instant'));
   }
 

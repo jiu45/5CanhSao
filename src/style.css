@@ -386,7 +386,7 @@ html, body {
   text-align: center;
   text-shadow: 0 2px 20px #020913;
 }
-.dedication-splash-line, .dedication-splash-name {
+.dedication-splash-line {
   position: absolute;
   inset: 0;
   display: grid;
@@ -395,18 +395,10 @@ html, body {
   opacity: 0;
   transform: translateY(9px);
   transition: opacity 650ms ease, transform 650ms ease;
-}
-.dedication-splash-line {
-  font-size: clamp(1.15rem, 2.8vw, 1.48rem);
-  font-style: italic;
-  color: #e0dfd7;
-}
-.dedication-splash-name {
-  color: #ffe4b8;
-  font-size: clamp(2.45rem, 7vw, 3.55rem);
+  color: #f0e9df;
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
   font-weight: 400;
-  letter-spacing: .045em;
-  text-shadow: 0 0 35px #e3aa6745;
+  letter-spacing: .025em;
 }
 .dedication-splash .visible {
   opacity: 1;

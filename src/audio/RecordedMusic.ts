@@ -1,13 +1,14 @@
 import type { ScoreMood } from './FestivalScore';
 
-// Locally hosted licensed recordings. Keep the original score for intimate and
-// transitional beats, so full-length tracks never drown out the story.
+// Locally hosted licensed recordings. The letter uses a quieter recording so
+// the written words remain the focus.
 const TRACKS: Partial<Record<ScoreMood, string>> = {
   village: '/assets/music/hue-bamboo-flute.mp3',
   festival: '/assets/music/vietnamese-happy-melodies.mp3',
   together: '/assets/music/vietnamese-happy-melodies.mp3',
   crowded: '/assets/music/vietnamese-happy-melodies.mp3',
   plaza: '/assets/music/vietnamese-festival-vibe.mp3',
+  letter: '/assets/music/hoi-an-ancient-charm.mp3',
   release: '/assets/music/vietnamese-festival-vibe.mp3'
 };
 
@@ -51,7 +52,8 @@ export class RecordedMusic {
   tryPlay(): void {
     if (!this.desired || this.muted || this.paused || !this.audio.paused ||
         this.audio.getAttribute('src') !== this.desired) return;
-    void this.audio.play().then(() => this.fadeTo(0.25, 650)).catch(() => {
+    void this.audio.play().then(() => this.fadeTo(
+      this.desired === TRACKS.letter ? 0.16 : 0.25, 650)).catch(() => {
       // Browser autoplay protection: retry on the next player gesture.
       this.onPlaybackChange(false);
     });
