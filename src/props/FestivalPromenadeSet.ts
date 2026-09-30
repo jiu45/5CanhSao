@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { INNER_GATE_POSITION, PHASE6_ROUTES, Phase6RouteId } from '../scenes/Phase6Routes';
 import { PresentCrowdKit, type VisitorProp } from './papercraft/PresentCrowdKit';
+import { PresentFestivalLifeKit } from './papercraft/PresentFestivalLifeKit';
 import { PapercraftFoliageKit } from './papercraft/PapercraftFoliageKit';
 import { MarketStallKit } from './papercraft/MarketStallKit';
 import { CeremonialCharacterKit } from './papercraft/CeremonialCharacterKit';
@@ -92,6 +93,7 @@ function pavedJunction(x: number, z: number, radius: number,
 /** Phase 6: Spatial promenade, secluded Moon Alcove, and guarded Inner Gate. */
 export class FestivalPromenadeSet {
   private readonly crowdKit = new PresentCrowdKit();
+  private readonly festivalLife = new PresentFestivalLifeKit();
   private readonly foliageKit = new PapercraftFoliageKit();
   private readonly marketKit = new MarketStallKit();
   private readonly characterKit = new CeremonialCharacterKit();
@@ -173,6 +175,7 @@ export class FestivalPromenadeSet {
     this.buildPromenadeTrees();
     this.buildLanternStrings();
     this.buildFlowerEdges();
+    this.buildLawnLife();
     this.buildPromenadeOccluders();
     this.buildMoonAlcove();
     this.buildLaterRouteFraming();
@@ -183,11 +186,14 @@ export class FestivalPromenadeSet {
 
     // Mid silhouettes along shared promenade
     for (let i = 0; i < 22; i++) {
-      const t = 0.3 + (i / 22) * 0.68;
+      const t = 0.18 + (i / 22) * 0.75 + Math.sin(i * 2.1) * 0.017;
       const p = PHASE6_ROUTES.route_shared.getPointAt(t);
-      const side = i % 2 === 0 ? 5 + (i % 3) : -5 - (i % 3);
+      const tangent = PHASE6_ROUTES.route_shared.getTangentAt(t);
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const side = (i % 2 === 0 ? 1 : -1) * (4.4 + (i * 3 % 5) * 0.68);
       const props: VisitorProp[] = ['none', 'phone', 'round', 'balloon', 'none', 'star', 'round'];
-      const actor = this.silhouette(p.x + side * 0.4, p.z + side * 0.7,
+      const position = p.addScaledVector(normal, side);
+      const actor = this.silhouette(position.x, position.z,
         0.75 + (i % 4) * 0.1, i % 3 === 0 ? 0x483746 : 0x26364b,
         props[i % props.length], i % 5 === 0);
       actor.visible = false;
@@ -195,7 +201,12 @@ export class FestivalPromenadeSet {
     }
     for (let i = 0; i < 8; i++) {
       const props: VisitorProp[] = ['balloon', 'phone', 'round', 'none', 'none', 'balloon', 'phone', 'round'];
-      const actor = this.silhouette(130 + (i % 4) * 2.8, -48 - Math.floor(i / 4) * 8,
+      const t = .69 + i * .037;
+      const p = PHASE6_ROUTES.route_shared.getPointAt(t);
+      const tangent = PHASE6_ROUTES.route_shared.getTangentAt(t);
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      p.addScaledVector(normal, (i % 2 ? -1 : 1) * (i % 3 === 0 ? 2.35 : 4.3 + (i % 3) * .6));
+      const actor = this.silhouette(p.x, p.z,
         i % 3 === 0 ? 0.72 : 1, i % 4 === 0 ? 0x4c3949 : 0x263449,
         props[i], true);
       actor.visible = false; this.nearCrowd.push(actor); this.group.add(actor);
@@ -209,7 +220,7 @@ export class FestivalPromenadeSet {
         const p = route.getPointAt(t);
         const tangent = route.getTangentAt(t);
         const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
-        p.addScaledVector(normal, i % 2 ? -2.6 : 2.6);
+        p.addScaledVector(normal, (i % 2 ? -1 : 1) * (2.8 + (i * 3 % 5) * .53));
         const props: VisitorProp[] = ['none', 'phone', 'round', 'none', 'balloon', 'star', 'none'];
         const actor = this.silhouette(p.x, p.z, 0.7 + (i % 4) * 0.13,
           i % 3 ? 0x27344b : 0x4a394b, props[i % props.length], i % 7 === 0);
@@ -300,6 +311,28 @@ export class FestivalPromenadeSet {
       stall.position.y = 0;
       stall.rotation.y = Math.atan2(-normal.x * side, -normal.z * side);
       this.group.add(stall);
+    }
+  }
+
+  private buildLawnLife(): void {
+    const route = PHASE6_ROUTES[Phase6RouteId.shared];
+    for (const [t, side, variant] of [[.55, -9.2, 0], [.71, 9.1, 1],
+      [.93, -7.5, 0]] as const) {
+      const p = route.getPointAt(t);
+      const tangent = route.getTangentAt(t);
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const picnic = this.festivalLife.createPicnic(variant);
+      picnic.position.copy(p).addScaledVector(normal, side);
+      picnic.position.y = .02;
+      this.group.add(picnic);
+    }
+    for (const [t, side, variant] of [[.62, 8.1, 0], [.96, 7.6, 1]] as const) {
+      const p = route.getPointAt(t);
+      const tangent = route.getTangentAt(t);
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const balloons = this.festivalLife.createBalloons(variant);
+      balloons.position.copy(p).addScaledVector(normal, side);
+      this.group.add(balloons);
     }
   }
 
@@ -984,6 +1017,7 @@ export class FestivalPromenadeSet {
   public beginSeparation(): void { if (this.separationElapsed < 0) this.separationElapsed = 0; }
 
   public update(delta: number, time: number): void {
+    this.festivalLife.update(time);
     this.crowdMotion += delta;
     this.gateActivation = THREE.MathUtils.damp(this.gateActivation,
       this.gateReady ? 1 : 0, 1.35, delta);

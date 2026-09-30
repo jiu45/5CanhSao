@@ -18,6 +18,7 @@ export class AudioManager {
   private recordedMusic: RecordedMusic | null = null;
   private recordedMusicPlaying = false;
   private scoreForcedPaused = false;
+  private dedicationCueGain: GainNode | null = null;
   private readonly unlockOnGesture = () => {
     if (!this.ctx || this.isMuted) return;
     if (this.ctx.state === 'running') {
@@ -60,6 +61,7 @@ export class AudioManager {
   public setMuted(muted: boolean): void {
     this.isMuted = muted;
     if (!this.ctx) return;
+    if (muted) this.stopDedicationCue();
     this.recordedMusic?.setMuted(muted);
     this.updateScorePause();
     if (muted) void this.ctx.suspend().catch(() => {});
@@ -86,6 +88,10 @@ export class AudioManager {
     this.scoreForcedPaused = paused;
     this.recordedMusic?.setPaused(paused);
     this.updateScorePause();
+    if (this.letterBedGain && this.ctx) {
+      this.letterBedGain.gain.setTargetAtTime(paused ? 0.0001 : 1,
+        this.ctx.currentTime, paused ? 0.12 : 0.7);
+    }
   }
   public stopScore(): void {
     this.recordedMusic?.stop();
@@ -142,9 +148,9 @@ export class AudioManager {
         if (dt > 1.4) break;
       }
 
-      // Transition into gentle nocturnal crickets & wind
+      // Keep the Moon's existing night air under the rewind; never restart it mid-shot.
       setTimeout(() => {
-        this.startNightAmbience();
+        if (!this.windSource) this.startNightAmbience();
         if (onComplete) onComplete();
       }, 5500);
     };
@@ -1660,6 +1666,265 @@ export class AudioManager {
    */
   public playCompanionArrivalChime() {
     this.playCompanionChime();
+  }
+  public async unlockForOpening(): Promise<boolean> {
+    if (!this.ctx) this.init();
+    if (!this.ctx || this.isMuted) return false;
+    if (this.ctx.state !== 'running') {
+      try { await this.ctx.resume(); } catch { return false; }
+    }
+    return this.ctx.state === 'running';
+  }
+
+  /** The existing four-note memory contour, condensed into a quiet opening signature. */
+  public playDedicationCue(): boolean {
+    if (!this.ctx || this.isMuted || this.ctx.state !== 'running') return false;
+    this.stopDedicationCue();
+    const now = this.ctx.currentTime;
+    const bus = this.ctx.createGain();
+    bus.gain.setValueAtTime(1, now);
+    bus.connect(this.ctx.destination);
+    this.dedicationCueGain = bus;
+    const motif: Array<[number, number, number]> = [
+      [587.33, 0, .94], [440, .63, .98],
+      [523.25, 1.31, 1.04], [392, 2.06, 1.25]
+    ];
+    motif.forEach(([freq, at, dur]) => {
+      const osc = this.ctx!.createOscillator();
+      const g = this.ctx!.createGain();
+      const f = this.ctx!.createBiquadFilter();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + at);
+      f.type = 'lowpass';
+      f.frequency.setValueAtTime(2700, now + at);
+      f.frequency.exponentialRampToValueAtTime(780, now + at + dur);
+      g.gain.setValueAtTime(0.0001, now + at);
+      g.gain.linearRampToValueAtTime(0.017, now + at + 0.035);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + at + dur);
+      osc.connect(f); f.connect(g); g.connect(bus);
+      osc.start(now + at); osc.stop(now + at + dur + 0.03);
+    });
+    return true;
+  }
+
+  public stopDedicationCue(): void {
+    if (!this.dedicationCueGain || !this.ctx) return;
+    const bus = this.dedicationCueGain;
+    const now = this.ctx.currentTime;
+    bus.gain.cancelScheduledValues(now);
+    bus.gain.setTargetAtTime(0.0001, now, .08);
+    window.setTimeout(() => bus.disconnect(), 500);
+    this.dedicationCueGain = null;
+  }
+
+  /**
+   * Soft nocturnal soundscape for the Moon Opening screen:
+   * Very distant night wind + faint crickets. Designed to play under
+   * the title card before the player clicks "Tua ngược thời gian".
+   */
+  public startMoonOpeningSoundscape(): void {
+    if (!this.ctx) this.init();
+    if (!this.ctx || this.isMuted) return;
+    if (!this.windSource) this.startNightAmbience();
+    // Reduce wind volume for a more distant feel
+    if (this.windGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.windGain.gain.cancelScheduledValues(now);
+      this.windGain.gain.setValueAtTime(0.001, now);
+      this.windGain.gain.linearRampToValueAtTime(0.018, now + 2.0);
+    }
+  }
+
+  /** A quiet harmonic wash below the sparse letter phrase in FestivalScore. */
+  private letterBedInterval: number | null = null;
+  private letterBedGain: GainNode | null = null;
+
+  public startLetterMusicBed(): void {
+    if (!this.ctx || this.isMuted) return;
+    if (this.letterBedInterval !== null) return;
+    if (this.ctx.state === 'suspended') {
+      void this.ctx.resume().catch(() => {});
+    }
+
+    // Create a master gain for the letter bed
+    this.letterBedGain = this.ctx.createGain();
+    this.letterBedGain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+    this.letterBedGain.gain.linearRampToValueAtTime(
+      this.scoreForcedPaused ? 0.0001 : 1.0, this.ctx.currentTime + 3.0);
+    this.letterBedGain.connect(this.ctx.destination);
+
+    const playPhrase = () => {
+      if (!this.ctx || this.isMuted || !this.letterBedGain) return;
+      const now = this.ctx.currentTime;
+      const dest = this.letterBedGain;
+
+      // Two low, slowly breathing tones give the words space to lead.
+      [146.83, 196].forEach((freq, i) => {
+        const pad = this.ctx!.createOscillator();
+        const pg = this.ctx!.createGain();
+        pad.type = 'sine';
+        pad.frequency.setValueAtTime(freq, now + i * 8);
+        pg.gain.setValueAtTime(0.0001, now + i * 8);
+        pg.gain.linearRampToValueAtTime(0.006, now + i * 8 + 2);
+        pg.gain.exponentialRampToValueAtTime(0.0001, now + i * 8 + 8);
+        pad.connect(pg); pg.connect(dest);
+        pad.start(now + i * 8); pad.stop(now + i * 8 + 8.05);
+      });
+    };
+
+    playPhrase();
+    this.letterBedInterval = window.setInterval(playPhrase, 16000);
+  }
+
+  public stopLetterMusicBed(): void {
+    if (this.letterBedInterval !== null) {
+      clearInterval(this.letterBedInterval);
+      this.letterBedInterval = null;
+    }
+    if (this.letterBedGain && this.ctx) {
+      this.letterBedGain.gain.linearRampToValueAtTime(0.0001, this.ctx.currentTime + 2.0);
+      const g = this.letterBedGain;
+      window.setTimeout(() => g.disconnect(), 2500);
+      this.letterBedGain = null;
+    }
+  }
+
+  /**
+   * Procedural firework SFX — a rising whistle followed by a sparkle burst.
+   * Multiple calls create a staggered fireworks display.
+   */
+  public playFireworkBurst(delay: number = 0): void {
+    if (!this.ctx || this.isMuted) return;
+    if (this.ctx.state === 'suspended') {
+      void this.ctx.resume().catch(() => {});
+    }
+    const now = this.ctx.currentTime + delay;
+
+    // 1. Rising whistle
+    const whistle = this.ctx.createOscillator();
+    const wGain = this.ctx.createGain();
+    whistle.type = 'sine';
+    whistle.frequency.setValueAtTime(400 + Math.random() * 200, now);
+    whistle.frequency.exponentialRampToValueAtTime(1800 + Math.random() * 600, now + 0.6);
+    wGain.gain.setValueAtTime(0.0001, now);
+    wGain.gain.linearRampToValueAtTime(0.025, now + 0.1);
+    wGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.65);
+    whistle.connect(wGain); wGain.connect(this.ctx.destination);
+    whistle.start(now); whistle.stop(now + 0.7);
+
+    // 2. Sparkle burst (filtered noise)
+    const burstTime = now + 0.6;
+    const bufferSize = Math.floor(this.ctx.sampleRate * 0.4);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.08));
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+    const nFilter = this.ctx.createBiquadFilter();
+    nFilter.type = 'bandpass';
+    nFilter.frequency.value = 3000 + Math.random() * 2000;
+    nFilter.Q.value = 1.2;
+    const nGain = this.ctx.createGain();
+    nGain.gain.setValueAtTime(0.045, burstTime);
+    nGain.gain.exponentialRampToValueAtTime(0.001, burstTime + 0.4);
+    noise.connect(nFilter); nFilter.connect(nGain); nGain.connect(this.ctx.destination);
+    noise.start(burstTime);
+
+    // 3. Bright chime tones (sparkle trails)
+    const sparkleFreqs = [1046.5, 1318.5, 1568, 2093].sort(() => Math.random() - 0.5).slice(0, 2);
+    sparkleFreqs.forEach((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      const g = this.ctx!.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f, burstTime + i * 0.06);
+      g.gain.setValueAtTime(0.0001, burstTime + i * 0.06);
+      g.gain.linearRampToValueAtTime(0.019, burstTime + i * 0.06 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, burstTime + i * 0.06 + 1.8);
+      osc.connect(g); g.connect(this.ctx!.destination);
+      osc.start(burstTime + i * 0.06); osc.stop(burstTime + i * 0.06 + 1.9);
+    });
+  }
+
+  /**
+   * Post-letter ambient loop: distant night wind returning under the moon.
+   * Softer than night ambience, blends with the fireworks.
+   */
+  private postLetterSource: AudioBufferSourceNode | null = null;
+  private postLetterGain: GainNode | null = null;
+
+  public startPostLetterAmbient(): void {
+    if (!this.ctx || this.isMuted) return;
+    if (this.postLetterSource) return;
+    if (this.ctx.state === 'suspended') {
+      void this.ctx.resume().catch(() => {});
+    }
+
+    // Gentle night wind
+    const bufferSize = this.ctx.sampleRate * 2;
+    const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    const source = this.ctx.createBufferSource();
+    source.buffer = noiseBuffer;
+    source.loop = true;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 320;
+    filter.Q.value = 2.0;
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.025, this.ctx.currentTime + 4.0);
+
+    source.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+    source.start();
+    this.postLetterSource = source;
+    this.postLetterGain = gain;
+  }
+
+  public stopPostLetterAmbient(): void {
+    if (this.postLetterGain && this.ctx) {
+      this.postLetterGain.gain.linearRampToValueAtTime(0.0001, this.ctx.currentTime + 1.5);
+    }
+    if (this.postLetterSource && this.ctx) {
+      this.postLetterSource.stop(this.ctx.currentTime + 1.6);
+    }
+    this.postLetterSource = null;
+    this.postLetterGain = null;
+  }
+
+  /**
+   * Play the closing motif: the original 4 notes returning under the moon.
+   * Bookends the game by echoing the dedication cue.
+   */
+  public playClosingMotif(): void {
+    if (!this.ctx || this.isMuted) return;
+    if (this.ctx.state === 'suspended') {
+      void this.ctx.resume().catch(() => {});
+    }
+    const now = this.ctx.currentTime;
+    const motif: Array<[number, number, number]> = [
+      [587.33, 0.0, 1.6],   // D5
+      [440,    1.8, 1.4],   // A4
+      [523.25, 3.6, 1.8],   // C5
+      [392,    5.8, 2.5]    // G4 (sustained ending)
+    ];
+    motif.forEach(([freq, at, dur]) => {
+      const osc = this.ctx!.createOscillator();
+      const g = this.ctx!.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, now + at);
+      g.gain.setValueAtTime(0.0001, now + at);
+      g.gain.linearRampToValueAtTime(0.032, now + at + 0.15);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + at + dur);
+      osc.connect(g); g.connect(this.ctx!.destination);
+      osc.start(now + at); osc.stop(now + at + dur + 0.05);
+    });
   }
 }
 

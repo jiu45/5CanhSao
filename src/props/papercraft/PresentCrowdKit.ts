@@ -129,11 +129,15 @@ export class PresentCrowdKit {
       held: VisitorProp, linked = false) => {
       c.save(); c.translate(cx, bottom); c.scale(s, s);
       // Warm and coral light brush the paper edge without a costly light per actor.
-      if (held !== 'none' && !far) glow(39, -252, held === 'round' || held === 'phone', 75);
+      if (held !== 'none' && !far) glow(48, -272, held === 'round' || held === 'phone', 92);
       c.shadowColor = '#e9a45c'; c.shadowBlur = far ? 5 : 12;
       c.fillStyle = '#51444a';
       c.beginPath(); c.ellipse(0, -294, 37, 43, style % 2 ? 0.12 : -0.1, 0, Math.PI * 2); c.fill();
       c.strokeStyle = '#c68b65'; c.lineWidth = 3; c.stroke();
+      if (!far && (held === 'star' || held === 'round')) {
+        c.strokeStyle = 'rgba(255,211,142,.78)'; c.lineWidth = 6;
+        c.beginPath(); c.ellipse(0, -294, 37, 43, 0, -.92, .58); c.stroke();
+      }
       c.shadowBlur = 0;
       polygon([[-36, -326], [-9, -345], [27, -330], [43, -310], [25, -314], [-30, -308]], '#18253a');
       if (style % 3 === 2) polygon([[-41, -317], [-26, -344], [22, -339], [37, -317]], '#1d2b40');
@@ -159,7 +163,8 @@ export class PresentCrowdKit {
       if (style % 3 === 0) polygon([[-37, -98], [-3, -104], [-8, -25], [-39, -11]], '#1a2b3d');
       arm(-42, -228, linked ? -69 : -58, linked ? -174 : style % 3 === 1 ? -156 : -128, coat);
       const handY = held === 'phone' ? -284 : held === 'balloon' ? -196 :
-        held === 'none' && linked ? -174 : -142;
+        held === 'star' || held === 'round' ? -260 :
+        held === 'none' && linked ? -174 : -180;
       arm(42, -229, held === 'phone' ? 53 : 66, handY, coat);
 
       if (!far && held === 'balloon') {
@@ -178,10 +183,10 @@ export class PresentCrowdKit {
         c.fillStyle = '#84b7be'; c.fillRect(-8, -14, 15, 22);
         c.restore();
       } else if (!far && (held === 'round' || held === 'star')) {
-        const ly = held === 'round' ? -121 : -135;
-        glow(84, ly, held === 'round', 59);
+        const ly = held === 'round' ? -284 : -296;
+        glow(84, ly, held === 'round', 76);
         c.strokeStyle = '#d8b991'; c.lineWidth = 2;
-        c.beginPath(); c.moveTo(66, -142); c.lineTo(79, ly - 13); c.stroke();
+        c.beginPath(); c.moveTo(66, -260); c.lineTo(79, ly + 12); c.stroke();
         c.shadowColor = '#ffc076'; c.shadowBlur = 18;
         if (held === 'star') {
           c.beginPath();

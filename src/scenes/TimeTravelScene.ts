@@ -144,6 +144,7 @@ export class TimeTravelScene implements IScene {
 
   private showOpeningTitle(): void {
     this.dedication = null;
+    audioManager.startMoonOpeningSoundscape();
     this.overlay.showStartScreen(
       "KÝ ỨC ĐÈN ÔNG SAO",
       StoryConfig.cinematicPeriodTitle,

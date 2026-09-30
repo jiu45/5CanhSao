@@ -14,6 +14,7 @@ export class MarketStallKit {
   private readonly warm = new THREE.MeshBasicMaterial({ color: 0xf5bf72 });
   private readonly dark = new THREE.MeshStandardMaterial({ color: 0x422e37, roughness: 0.92 });
   private readonly lantern = new THREE.MeshBasicMaterial({ color: 0xffd18b });
+  private floorWash?: THREE.MeshBasicMaterial;
 
   create(variant: number): THREE.Group {
     const group = new THREE.Group();
@@ -50,6 +51,27 @@ export class MarketStallKit {
       group.add(lamp);
       beam(0.018, 0.3, 0.018, x, 2.55, 0.84, this.warm);
     }
+    // A soft painted spill reads as light on the paving without shadow-map cost.
+    if (!this.floorWash) {
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = 128;
+      const context = canvas.getContext('2d')!;
+      const gradient = context.createRadialGradient(64, 64, 4, 64, 64, 63);
+      gradient.addColorStop(0, 'rgba(255,191,103,.58)');
+      gradient.addColorStop(.5, 'rgba(240,124,62,.18)');
+      gradient.addColorStop(1, 'rgba(240,124,62,0)');
+      context.fillStyle = gradient; context.fillRect(0, 0, 128, 128);
+      this.floorWash = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas),
+        transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide, toneMapped: false });
+    }
+    const spill = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 3.1), this.floorWash);
+    spill.rotation.x = -Math.PI / 2;
+    spill.position.set(0, 0.055, 1.65);
+    group.add(spill);
+    const interior = new THREE.PointLight(0xffbd73, 0.85, 4.8, 2);
+    interior.position.set(0, 1.85, 0.45);
+    group.add(interior);
     return group;
   }
 

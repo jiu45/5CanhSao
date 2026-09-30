@@ -382,8 +382,8 @@ export class FestivalSquareScene implements IScene {
     // =========================================================================
     this.reverseAudienceGroup = new THREE.Group();
 
-    // Center Hero: The Player's Child Persona holding the radiant Star Lantern!
-    const heroTex = TextureGenerator.createPlayerChildWithLanternTexture();
+    // Center Hero: the same handmade lantern chosen by the recipient in Scene 1.
+    const heroTex = TextureGenerator.createPlayerChildWithLanternTexture(readRecipientLanternStyle());
     const heroGeo = new THREE.PlaneGeometry(2.6, 2.6);
     const heroMat = new THREE.MeshBasicMaterial({
       map: heroTex,
@@ -396,7 +396,7 @@ export class FestivalSquareScene implements IScene {
     this.playerChildMesh.rotation.y = Math.PI; // Facing -Z towards the lion!
     this.reverseAudienceGroup.add(this.playerChildMesh);
 
-    // Warm radial light cast from the player child's star lantern
+    // Warm radial light cast from the player's lantern, regardless of silhouette.
     this.playerChildLight = new THREE.PointLight(0xffaa38, 3.8, 8.5, 1.3);
     this.playerChildLight.position.set(0, 1.55, -0.35);
     this.reverseAudienceGroup.add(this.playerChildLight);
@@ -489,9 +489,9 @@ export class FestivalSquareScene implements IScene {
       this.ascentTransitionGroup.add(mesh);
     });
 
-    // 3. Ground Hero Child (The player's ground avatar standing in the circle holding star lantern)
+    // 3. Ground Hero Child, preserving the recipient's lantern through the ascent.
     // Encapsulated strictly inside ascentTransitionGroup
-    const childTex = TextureGenerator.createPlayerChildWithLanternTexture();
+    const childTex = TextureGenerator.createPlayerChildWithLanternTexture(readRecipientLanternStyle());
     const childGeo = new THREE.PlaneGeometry(2.4, 2.4);
     const childMat = new THREE.MeshBasicMaterial({
       map: childTex,

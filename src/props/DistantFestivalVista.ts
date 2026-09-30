@@ -3,6 +3,7 @@ import { TextureGenerator } from '../utils/TextureGenerator';
 import { PapercraftFoliageKit } from './papercraft/PapercraftFoliageKit';
 import { MarketStallKit } from './papercraft/MarketStallKit';
 import { PresentCrowdKit } from './papercraft/PresentCrowdKit';
+import { PresentFestivalLifeKit } from './papercraft/PresentFestivalLifeKit';
 import { disposeSceneResources } from '../utils/disposeSceneResources';
 
 /**
@@ -26,6 +27,7 @@ export class DistantFestivalVista {
   private readonly foliageKit = new PapercraftFoliageKit();
   private readonly marketKit = new MarketStallKit();
   private readonly crowdKit = new PresentCrowdKit();
+  private readonly festivalLife = new PresentFestivalLifeKit();
   private visitorMeshes: THREE.Object3D[] = [];
   private skylineMesh?: THREE.Mesh;
   private plazaFloorMaterial?: THREE.MeshStandardMaterial;
@@ -64,6 +66,7 @@ export class DistantFestivalVista {
   /** Phase 5 instance only: quiet the distant festival while the lanterns lead. */
   public setPhase5Darkness(amount: number): void {
     this.phase5Darkness = THREE.MathUtils.clamp(amount, 0, 1);
+    this.festivalLife.setQuiet(this.phase5Darkness);
   }
 
   public setPhase5TowerFocus(amount: number): void {
@@ -264,15 +267,15 @@ export class DistantFestivalVista {
     // Strolling Visitor Silhouettes & Environmental Storytelling along approach path
     // Increasing Crowd Density: Sparse near viewpoint -> Moderate midway -> Clustered near gate
     const visitorPlacements = [
-      { t: 0.18, sideOffset: -3.3, scale: 0.9 },
-      { t: 0.35, sideOffset: 3.5, scale: 0.85 },
-      { t: 0.50, sideOffset: -3.4, scale: 0.8 },
-      { t: 0.65, sideOffset: 3.5, scale: 0.8 },
-      { t: 0.78, sideOffset: -3.4, scale: 0.75 },
-      { t: 0.86, sideOffset: 3.5, scale: 0.73 },
-      { t: 0.92, sideOffset: -3.3, scale: 0.7 },
-      { t: 0.96, sideOffset: 3.6, scale: 0.68 }
-    ];
+      { t: 0.18, sideOffset: -4.2, scale: 0.9, prop: 'round' },
+      { t: 0.32, sideOffset: 4.9, scale: 0.85, prop: 'phone' },
+      { t: 0.48, sideOffset: -3.8, scale: 0.8, prop: 'none' },
+      { t: 0.59, sideOffset: 5.1, scale: 0.8, prop: 'balloon' },
+      { t: 0.73, sideOffset: -4.6, scale: 0.75, prop: 'star' },
+      { t: 0.84, sideOffset: 4.3, scale: 0.73, prop: 'round' },
+      { t: 0.92, sideOffset: -4.1, scale: 0.7, prop: 'none' },
+      { t: 0.96, sideOffset: 4.5, scale: 0.68, prop: 'phone' }
+    ] as const;
 
     visitorPlacements.forEach((vp, index) => {
       const pt = pathCurve.getPoint(vp.t);
@@ -281,11 +284,31 @@ export class DistantFestivalVista {
       const vPos = pt.clone().add(normal.multiplyScalar(vp.sideOffset));
 
       const visitor = this.crowdKit.createActor(vPos.x, vPos.z, vp.scale,
-        0x26364b, index % 3 === 0 ? 'star' : index % 3 === 1 ? 'round' : 'none');
+        0x26364b, vp.prop, index < 3);
       visitor.position.y = vPos.y;
       this.group.add(visitor);
       this.visitorMeshes.push(visitor);
     });
+
+    // Lawn life sits beyond the route's flower rim, leaving both playable lanterns clear.
+    for (const [t, side, variant] of [[.31, -8.5, 0], [.77, -8.5, 1],
+      [.91, 8.4, 0]] as const) {
+      const p = pathCurve.getPoint(t);
+      const tangent = pathCurve.getTangent(t).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const picnic = this.festivalLife.createPicnic(variant);
+      picnic.position.copy(p).addScaledVector(normal, side);
+      picnic.position.y = p.y;
+      this.group.add(picnic);
+    }
+    for (const [t, side, variant] of [[.43, 6.7, 0], [.81, -6.7, 1]] as const) {
+      const p = pathCurve.getPoint(t);
+      const tangent = pathCurve.getTangent(t).normalize();
+      const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+      const balloons = this.festivalLife.createBalloons(variant);
+      balloons.position.copy(p).addScaledVector(normal, side);
+      this.group.add(balloons);
+    }
 
     // -------------------------------------------------------------------------
     // Environmental Storytelling Moments along Approach
@@ -977,6 +1000,7 @@ export class DistantFestivalVista {
    * Continuous animation loop update
    */
   public update(delta: number, time: number) {
+    this.festivalLife.update(time);
     // 1. Giant Revolving Shadow Lantern Drum steady rotation
     if (this.revolvingDrum) {
       this.revolvingDrum.rotation.y += delta * 0.28;

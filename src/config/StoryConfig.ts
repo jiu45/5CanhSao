@@ -109,7 +109,7 @@ export const StoryConfig: StoryConfigType = {
     actionCompleteIterationB: "Hoàn thành điệu múa lân 🦁",
     actionStartMemoryAscent: "Hòa vào vầng trăng ký ức 🌕",
     ascentStage1: "Tiếng trống vẫn rung dưới chân bạn.",
-    ascentStage1Lantern: "Ngôi sao bạn tự tay làm hòa vào đoàn đèn dưới sân đình.",
+    ascentStage1Lantern: "Chiếc đèn bạn tự tay làm hòa vào đoàn đèn dưới sân đình.",
     ascentStage2Village: "Mái đình và những tiếng cười lùi dần trong gió.",
     ascentStage3Constellation: "Từ trên cao, đêm hội chỉ còn là những chấm sáng nhỏ.",
     ascentStage4Moon: "Ngọn đèn dưới sân đình nhỏ dần; vầng trăng lớn lên trước mắt bạn."

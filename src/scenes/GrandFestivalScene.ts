@@ -238,6 +238,8 @@ export class GrandFestivalScene implements IScene {
     this.replayLetterButton.addEventListener('click', () => {
       this.letterSheet.style.display = 'flex';
       scrollHint.hidden = paper.scrollHeight <= paper.clientHeight + 8;
+      audioManager.setScoreMood('letter');
+      audioManager.startLetterMusicBed();
     });
     document.body.appendChild(this.replayLetterButton);
     this.letterSheet = document.createElement('div');
@@ -253,7 +255,12 @@ export class GrandFestivalScene implements IScene {
     message.textContent = finalWishText.trim();
     const close = document.createElement('button');
     close.type = 'button'; close.textContent = 'Khép lá thư';
-    close.addEventListener('click', () => { this.letterSheet.style.display = 'none'; });
+    close.addEventListener('click', () => {
+      this.letterSheet.style.display = 'none';
+      audioManager.stopLetterMusicBed();
+      audioManager.stopScore();
+      audioManager.playClosingMotif();
+    });
     paper.append(heading, scrollHint, message, close);
     this.letterSheet.appendChild(paper);
     document.body.appendChild(this.letterSheet);
@@ -345,6 +352,7 @@ export class GrandFestivalScene implements IScene {
       this.isFinished = true;
       this.replayLetterButton.style.display = 'block';
       audioManager.stopModernAmbientAudio();
+      audioManager.stopPostLetterAmbient();
       audioManager.stopScore();
     }
   }
@@ -353,8 +361,24 @@ export class GrandFestivalScene implements IScene {
     if (this.elapsed < at || this.firedCues.has(kind)) return;
     this.firedCues.add(kind);
     if (kind === 'reveal') audioManager.setScoreMood('plaza');
-    if (kind === 'intimate') audioManager.setScoreMood('letter');
-    if (kind === 'release') audioManager.setScoreMood('release');
+    if (kind === 'intimate') {
+      audioManager.setScoreMood('letter');
+      audioManager.startLetterMusicBed();
+    }
+    if (kind === 'release') {
+      audioManager.setScoreMood('release');
+      audioManager.stopLetterMusicBed();
+      audioManager.startPostLetterAmbient();
+      // The whistle arrives just before each painted burst in FinaleSky.
+      for (const start of [1.2, 3.4, 5.7, 7.4, 13.5, 19.5]) {
+        audioManager.playFireworkBurst(Math.max(0, start - 0.8));
+      }
+    }
+    if (kind === 'moon') {
+      audioManager.setScoreMood('moon');
+      audioManager.playClosingMotif();
+      return;
+    }
     audioManager.playPhase7Cue(kind);
   }
 
@@ -390,6 +414,8 @@ export class GrandFestivalScene implements IScene {
 
   public destroy(): void {
     this.destroyed = true;
+    audioManager.stopLetterMusicBed();
+    audioManager.stopPostLetterAmbient();
     audioManager.stopModernAmbientAudio();
     audioManager.stopScore();
     this.plaza.dispose();

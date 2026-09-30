@@ -11,6 +11,7 @@ import { StoryOverlay } from '../ui/StoryOverlay';
 import { DistantFestivalVista } from '../props/DistantFestivalVista';
 import { PapercraftFoliageKit } from '../props/papercraft/PapercraftFoliageKit';
 import { PresentCrowdKit } from '../props/papercraft/PresentCrowdKit';
+import { PresentFestivalLifeKit } from '../props/papercraft/PresentFestivalLifeKit';
 import { compileForComposer } from '../utils/prepareSceneForReveal';
 
 export class ModernArrivalScene implements IScene {
@@ -37,6 +38,7 @@ export class ModernArrivalScene implements IScene {
   private treeCanopies: THREE.Sprite[] = [];
   private readonly foliageKit = new PapercraftFoliageKit();
   private readonly crowdKit = new PresentCrowdKit();
+  private readonly festivalLife = new PresentFestivalLifeKit();
 
   // Transition & visual veil
   private fadeCurtainEl: HTMLElement | null = null;
@@ -732,19 +734,29 @@ export class ModernArrivalScene implements IScene {
 
     // 6. Contemporary Park Visitors strolling peacefully along promenade (1.7m - 1.8m human scale)
     const visitorPlacements = [
-      { x: -1.7, z: -9.0, scale: 1.0 },
-      { x: 1.9, z: -16.0, scale: 0.96 },
-      { x: -1.8, z: -25.0, scale: 0.90 },
-      { x: 1.7, z: -34.0, scale: 0.85 }
-    ];
+      { x: -1.15, z: -9.0, scale: 1.0, prop: 'round' },
+      { x: 1.9, z: -15.2, scale: 0.96, prop: 'phone' },
+      { x: -2.25, z: -24.0, scale: 0.87, prop: 'none' },
+      { x: 1.1, z: -33.4, scale: 0.82, prop: 'star' }
+    ] as const;
 
     visitorPlacements.forEach((vp, index) => {
-      const props = ['balloon', 'phone', 'round', 'none'] as const;
       const visitor = this.crowdKit.createActor(vp.x, vp.z, vp.scale,
-        0x26364b, props[index], true);
+        0x26364b, vp.prop, index < 4);
       this.modernArrivalGroup.add(visitor);
       this.parkVisitorMeshes.push(visitor);
     });
+    for (const [x, z, variant] of [[-9.5, -21.2, 0], [9.3, -18.7, 1],
+      [9.6, -34.5, 0]] as const) {
+      const picnic = this.festivalLife.createPicnic(variant);
+      picnic.position.set(x, 0, z);
+      this.modernArrivalGroup.add(picnic);
+    }
+    for (const [x, z, variant] of [[-9.3, -13.7, 0], [8.3, -28.3, 1]] as const) {
+      const balloons = this.festivalLife.createBalloons(variant);
+      balloons.position.set(x, 0, z);
+      this.modernArrivalGroup.add(balloons);
+    }
   }
 
   private createFlowerbedBorder(x: number, zStart: number, zEnd: number, isRight: boolean) {
@@ -1292,6 +1304,7 @@ export class ModernArrivalScene implements IScene {
         mesh.userData.baseZ + Math.cos(time * .55 + idx) * .06);
       this.crowdKit.animateActor(mesh as THREE.Group, time, idx * .8);
     });
+    this.festivalLife.update(time);
 
     // 4. Giant Moon Sculpture radiant breathing pulse & gentle rotation
     if (this.giantMoonLight) {

@@ -363,7 +363,7 @@ html, body {
   .cinematic-subtitle-text { font-size: .96rem; line-height: 1.45; padding: 8px 14px; }
 }
 
-/* Two illustrated storybook pages connect the moon to the child's workbench. */
+/* A single, quiet dedication before the Moon takes the screen. */
 .dedication-page {
   position: fixed;
   inset: 0;
@@ -371,77 +371,49 @@ html, body {
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: radial-gradient(ellipse at 50% 42%, #19314b 0%, #081727 52%, #030812 100%);
-  color: #f7e9cd;
-  opacity: 0;
-  transition: opacity 650ms ease;
+  background: radial-gradient(ellipse at 50% 44%, #11253a 0%, #071421 48%, #02060e 100%);
+  color: #f0e9df;
+  opacity: 1;
+  transition: opacity 680ms ease;
   font-family: Georgia, 'Times New Roman', serif;
 }
-.dedication-page.visible { opacity: 1; }
-.dedication-page.turning { opacity: 0; }
-.dedication-page-paper {
+.dedication-page.leaving { opacity: 0; }
+.dedication-page.instant, .dedication-page.instant * { transition-duration: 0ms !important; }
+.dedication-splash {
   position: relative;
-  width: min(520px, calc(100vw - 30px));
-  height: min(580px, calc(100vh - 26px));
-  min-height: 380px;
-  background: linear-gradient(110deg, #1a2b3c, #263950 50%, #182c40);
-  border: 1px solid rgba(233, 192, 126, .38);
-  box-shadow: 0 36px 100px #02070dbb, 0 0 70px #edb96620, inset 0 0 80px #07142388;
-  transform: translateY(14px) rotate(-1deg);
-  opacity: 0;
-  transition: transform 850ms cubic-bezier(.2,.7,.2,1), opacity 850ms ease;
-}
-.dedication-page.visible .dedication-page-paper { transform: translateY(0) rotate(0); opacity: 1; }
-.dedication-page.turning .dedication-page-paper { transform: translateX(60px) rotate(5deg) scale(.95); }
-.dedication-page-art { position: absolute; inset: 0; width: 100%; height: 100%; }
-.dedication-page-copy {
-  position: absolute;
-  top: 53%;
-  left: 8%;
-  width: 84%;
+  width: min(88vw, 560px);
+  height: 180px;
   text-align: center;
-  text-shadow: 0 2px 14px #06111e;
+  text-shadow: 0 2px 20px #020913;
 }
-.dedication-page-kicker {
-  color: #dfbe88;
-  font: 600 .67rem 'Segoe UI', system-ui, sans-serif;
-  letter-spacing: .26em;
-}
-.dedication-page-line { margin-top: 20px; font-size: clamp(1.2rem, 3vw, 1.5rem); font-style: italic; }
-.dedication-page h1 {
-  margin: 3px 0 14px;
-  color: #ffe3a9;
-  font-size: clamp(2.5rem, 8vw, 4.15rem);
-  font-weight: 400;
-  letter-spacing: .025em;
-  text-shadow: 0 0 28px #e8a75d77;
-}
-.dedication-page-whisper { font-size: clamp(.92rem, 2.3vw, 1.08rem); color: #d9d9d2; font-style: italic; }
-.dedication-page-open {
+.dedication-splash-line, .dedication-splash-name {
   position: absolute;
-  left: 50%;
-  bottom: 5%;
-  transform: translateX(-50%);
-  min-height: 42px;
-  white-space: nowrap;
-  padding: 8px 22px;
-  border: 1px solid #e3bd80a8;
-  border-radius: 999px;
-  background: #101e30d8;
-  color: #ffe6b6;
-  font: 600 .9rem 'Segoe UI', system-ui, sans-serif;
-  letter-spacing: .04em;
-  cursor: pointer;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  opacity: 0;
+  transform: translateY(9px);
+  transition: opacity 650ms ease, transform 650ms ease;
 }
-.dedication-page-open:hover,
-.dedication-page-open:focus-visible { background: #344459; outline: 2px solid #ffe4a9; outline-offset: 3px; }
-@media (max-width: 600px) {
-  .dedication-page-copy { top: 51%; }
-  .dedication-divider { display: none; }
+.dedication-splash-line {
+  font-size: clamp(1.15rem, 2.8vw, 1.48rem);
+  font-style: italic;
+  color: #e0dfd7;
 }
-@media (max-height: 530px) { .dedication-page-copy { top: 48%; } .dedication-page-open { bottom: 3%; } }
+.dedication-splash-name {
+  color: #ffe4b8;
+  font-size: clamp(2.45rem, 7vw, 3.55rem);
+  font-weight: 400;
+  letter-spacing: .045em;
+  text-shadow: 0 0 35px #e3aa6745;
+}
+.dedication-splash .visible {
+  opacity: 1;
+  transform: translateY(0);
+}
 @media (prefers-reduced-motion: reduce) {
-  .dedication-page, .dedication-page-paper { transition-duration: 1ms; }
+  .dedication-page, .dedication-splash * { transition-duration: 1ms; }
 }
 
 /* A small page of bamboo outlines, opened only after the player touches the rods. */

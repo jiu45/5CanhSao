@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import type { LanternStyle } from '../props/LanternIdentity';
+import { drawLanternSilhouette } from '../props/LanternSilhouetteArt';
 
 /**
  * Procedural Texture Generator for Ghibli / Storybook Vietnamese Mid-Autumn style
@@ -2155,8 +2157,8 @@ export class TextureGenerator {
     return new THREE.CanvasTexture(canvas);
   }
 
-  // 24. Player's Child Persona with Radiant Star Lantern (Vòng tròn bè bạn nhìn ngược lên đầu lân)
-  public static createPlayerChildWithLanternTexture(): THREE.CanvasTexture {
+  // 24. Player's Child Persona with the recipient's handmade lantern.
+  public static createPlayerChildWithLanternTexture(style: LanternStyle = 'star'): THREE.CanvasTexture {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 1024;
@@ -2360,7 +2362,7 @@ export class TextureGenerator {
     ctx.stroke();
 
     // =========================================================================
-    // 4. THE RADIANT STAR LANTERN (Chiếc đèn ông sao phát sáng rực rỡ nhất)
+    // 4. The recipient's lantern retains the original generous halo in every shape.
     // =========================================================================
     const starCenterX = 512;
     const starCenterY = 280;
@@ -2369,16 +2371,22 @@ export class TextureGenerator {
 
     // Immense luminous golden glow bloom
     const starBloom = ctx.createRadialGradient(starCenterX, starCenterY, 15, starCenterX, starCenterY, 260);
-    starBloom.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    starBloom.addColorStop(0.2, 'rgba(254, 240, 138, 0.95)');
-    starBloom.addColorStop(0.5, 'rgba(245, 158, 11, 0.7)');
-    starBloom.addColorStop(0.8, 'rgba(220, 38, 38, 0.3)');
+    starBloom.addColorStop(0, style === 'star'
+      ? 'rgba(255, 255, 255, 1)' : 'rgba(255, 234, 166, 0.58)');
+    starBloom.addColorStop(0.2, style === 'star'
+      ? 'rgba(254, 240, 138, 0.95)' : 'rgba(254, 210, 112, 0.53)');
+    starBloom.addColorStop(0.5, style === 'star'
+      ? 'rgba(245, 158, 11, 0.7)' : 'rgba(245, 158, 11, 0.40)');
+    starBloom.addColorStop(0.8, style === 'star'
+      ? 'rgba(220, 38, 38, 0.3)' : 'rgba(220, 38, 38, 0.19)');
     starBloom.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = starBloom;
     ctx.beginPath();
     ctx.arc(starCenterX, starCenterY, 260, 0, Math.PI * 2);
     ctx.fill();
 
+    if (style === 'star') {
+    // Preserve the approved traditional star painting and its luminance exactly.
     // Outer bamboo hoop ring
     ctx.strokeStyle = '#f59e0b';
     ctx.lineWidth = 6;
@@ -2423,11 +2431,16 @@ export class TextureGenerator {
       ctx.stroke();
     }
     ctx.restore();
+    } else {
+      // Draw the same painted paper silhouette used by the crafted 3D prop.
+      // The body glow stays beneath it, so the shape reads even in the zoom-out.
+      ctx.drawImage(drawLanternSilhouette(style, true), 332, 100, 360, 360);
+    }
 
     // Central candle flame highlight spark
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = style === 'star' ? '#ffffff' : '#fff4c5';
     ctx.beginPath();
-    ctx.arc(starCenterX, starCenterY, 14, 0, Math.PI * 2);
+    ctx.arc(starCenterX, starCenterY, style === 'star' ? 14 : 6, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
