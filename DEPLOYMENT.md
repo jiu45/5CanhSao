@@ -34,3 +34,7 @@ For local production smoke testing, run `npm run build`, `npm run preview -- --h
 ## Roll back
 
 In **Cloudflare Pages → Deployments → All deployments**, open the three-dot menu on the last known good production deployment and choose **Rollback to this deployment**. Cloudflare documents [deployment rollbacks](https://developers.cloudflare.com/pages/configuration/rollbacks/). Confirm that its build used the expected public Supabase environment variables and test a two device invite after rollback.
+
+## Historical private content
+
+The repository is private because personal photographs and a letter were previously committed. The active production deployment blocks their four old public photo URLs. Older Pages deployment URLs must be removed separately in **Workers & Pages → 5canhsao → Deployments → All deployments**. Do not roll back to a deployment from before the private-content release, or make the GitHub repository public again, until GitHub has purged cached access to the old commit IDs. Rewriting Git history alone does not remove cached commit URLs or other people's existing clones.
