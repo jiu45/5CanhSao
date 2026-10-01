@@ -1,5 +1,7 @@
 {
   "version": 1,
-  "include": ["/api/personal/*"],
+  "include": ["/api/personal/*", "/assets/memories/ho_con.png",
+    "/assets/memories/like.jpg", "/assets/memories/rau.jpg",
+    "/assets/memories/thom_thom.jpg"],
   "exclude": []
 }
