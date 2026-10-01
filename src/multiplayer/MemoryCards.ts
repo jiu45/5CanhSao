@@ -1,3 +1,5 @@
+import { getAudienceMode, getPersonalDeck } from '../content/AudienceMode';
+
 export interface MemoryCard {
   id: string;
   imageSrc: string;
@@ -22,16 +24,26 @@ let deckPromise: Promise<MemoryDeck> | null = null;
 let photoPromise: Promise<void> | null = null;
 const decodedPhotos = new Map<string, HTMLImageElement>();
 
-/** Edit only public/assets/memories/manifest.json to replace sample art with personal images. */
+/** Guests use public paper art; personal cards arrive only after server PIN verification. */
 async function fetchMemoryDeck(): Promise<MemoryDeck> {
-  const response = await fetch('/assets/memories/manifest.json');
-  if (!response.ok) throw new Error('Memory manifest unavailable');
-  const deck = await response.json() as MemoryDeck;
+  let deck: MemoryDeck;
+  if (getAudienceMode() === 'personal') {
+    const ready = getPersonalDeck();
+    if (!ready) throw new Error('Personal memory deck unavailable');
+    deck = ready;
+  } else {
+    const response = await fetch('/assets/memories/manifest.json');
+    if (!response.ok) throw new Error('Memory manifest unavailable');
+    deck = await response.json() as MemoryDeck;
+  }
   if (!Array.isArray(deck.cards) || deck.cards.length < 4 || !Array.isArray(deck.rounds) || deck.rounds.length < 2) {
     throw new Error('Memory manifest needs four cards and two rounds');
   }
   const ids = new Set(deck.cards.map(card => card.id));
-  if (ids.size !== deck.cards.length || deck.cards.some(card => !card.id || !card.imageSrc?.startsWith('/assets/memories/'))) {
+  const imagePrefix = getAudienceMode() === 'personal'
+    ? '/api/personal/photo/' : '/assets/memories/';
+  if (ids.size !== deck.cards.length || deck.cards.some(card =>
+    !card.id || !card.imageSrc?.startsWith(imagePrefix))) {
     throw new Error('Invalid memory card IDs or local paths');
   }
   for (const [index, round] of deck.rounds.slice(0, 2).entries()) {
@@ -56,7 +68,7 @@ export function loadMemoryDeck(): Promise<MemoryDeck> {
   return deckPromise;
 }
 
-/** Fetch and decode personal photographs during Phase 5, before the Moon Alcove. */
+/** Fetch and decode the selected four images during Phase 5. */
 export function preloadMemoryDeck(): Promise<void> {
   if (photoPromise) return photoPromise;
   photoPromise = loadMemoryDeck().then(async deck => {

@@ -11,7 +11,7 @@ import { StarLantern } from '../props/StarLantern';
 import { ModernStarLantern } from '../props/ModernStarLantern';
 import { Phase6RouteId } from './Phase6Routes';
 import { audioManager } from '../audio/AudioManager';
-import finalWishText from '../content/final-wish.txt?raw';
+import { getFinalWishText } from '../content/AudienceMode';
 import { readRecipientLanternStyle, type LanternStyle } from '../props/LanternIdentity';
 import { drawLanternSilhouette } from '../props/LanternSilhouetteArt';
 
@@ -67,6 +67,7 @@ export class GrandFestivalScene implements IScene {
   public isFinished = false;
   private readonly role: 'host' | 'guest';
   private readonly recipientStyle: LanternStyle;
+  private readonly finalWishText = getFinalWishText();
   private fadeLayer!: HTMLDivElement;
   private endCard!: HTMLDivElement;
   private pauseLetterButton!: HTMLButtonElement;
@@ -76,7 +77,7 @@ export class GrandFestivalScene implements IScene {
   private readonly firedCues = new Set<string>();
 
   private loadFinalWish(): void {
-    const paragraphs = finalWishText.replace(/\r/g, '').trim().split(/\n\s*\n/)
+    const paragraphs = this.finalWishText.replace(/\r/g, '').trim().split(/\n\s*\n/)
       .map(paragraph => paragraph.replace(/\s*\n\s*/g, ' ').trim())
       .filter(Boolean).flatMap(splitWishParagraph);
     this.messageBeats = paragraphs;
@@ -245,7 +246,7 @@ export class GrandFestivalScene implements IScene {
     scrollHint.className = 'final-letter-scroll-hint';
     scrollHint.textContent = 'Cuộn xuống để đọc tiếp ↓';
     const message = document.createElement('p');
-    message.textContent = finalWishText.trim();
+    message.textContent = this.finalWishText.trim();
     const close = document.createElement('button');
     close.type = 'button'; close.textContent = 'Khép thư';
     close.addEventListener('click', () => {

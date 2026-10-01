@@ -9,12 +9,36 @@ export class Moon {
   constructor() {
     this.group = new THREE.Group();
 
-    // 1. Moon sphere / disc
-    const moonGeo = new THREE.SphereGeometry(1.8, 32, 32);
+    // 1. A painted paper disc. Keep its silhouette perfectly round; only the
+    // restrained colour wash suggests paper beneath the shared moonlight halo.
+    const moonCanvas = document.createElement('canvas');
+    moonCanvas.width = moonCanvas.height = 512;
+    const moonCtx = moonCanvas.getContext('2d')!;
+    const centre = 256;
+    moonCtx.beginPath();
+    moonCtx.arc(centre, centre, 236, 0, Math.PI * 2);
+    const paperWash = moonCtx.createRadialGradient(centre, centre, 18, centre, centre, 236);
+    paperWash.addColorStop(0, '#fffdf4');
+    paperWash.addColorStop(.7, '#fbf9f1');
+    paperWash.addColorStop(.92, '#eff2ef');
+    paperWash.addColorStop(1, '#dce8ed');
+    moonCtx.fillStyle = paperWash;
+    moonCtx.fill();
+    moonCtx.strokeStyle = 'rgba(112, 145, 169, .22)';
+    moonCtx.lineWidth = 6;
+    moonCtx.stroke();
+    const moonTexture = new THREE.CanvasTexture(moonCanvas);
+    moonTexture.colorSpace = THREE.SRGBColorSpace;
+    const moonGeo = new THREE.PlaneGeometry(3.9, 3.9);
     const moonMat = new THREE.MeshBasicMaterial({
-      color: 0xfffae8
+      map: moonTexture,
+      color: new THREE.Color(0xffffff).multiplyScalar(1.18),
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide
     });
     this.moonMesh = new THREE.Mesh(moonGeo, moonMat);
+    this.moonMesh.renderOrder = 1;
     this.group.add(this.moonMesh);
 
     // 2. Luminous celestial halo glow
@@ -36,10 +60,12 @@ export class Moon {
       map: haloTexture,
       transparent: true,
       blending: THREE.AdditiveBlending,
+      opacity: 0.76,
       depthWrite: false,
       side: THREE.DoubleSide
     });
     this.haloMesh = new THREE.Mesh(haloGeo, haloMat);
+    this.haloMesh.renderOrder = 0;
     this.group.add(this.haloMesh);
 
     // 3. Directional moonlight beam
@@ -58,7 +84,16 @@ export class Moon {
   }
 
   public update(camera: THREE.Camera) {
-    // Keep halo facing the camera
+    // The shallow paper layers turn together toward the viewer.
+    this.moonMesh.quaternion.copy(camera.quaternion);
     this.haloMesh.quaternion.copy(camera.quaternion);
+  }
+
+  /** Scene-local light level; the village can keep its softer storytelling moon. */
+  public setVisualLevel(discBrightness: number, haloOpacity: number,
+    tint: THREE.ColorRepresentation = 0xffffff): void {
+    (this.moonMesh.material as THREE.MeshBasicMaterial).color
+      .set(tint).multiplyScalar(discBrightness);
+    (this.haloMesh.material as THREE.MeshBasicMaterial).opacity = haloOpacity;
   }
 }

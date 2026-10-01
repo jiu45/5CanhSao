@@ -4,4 +4,6 @@ dist/
 *.log
 .env
 .env.local
+.dev.vars*
 test-artifacts/
+private-personal/

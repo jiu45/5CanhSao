@@ -1,5 +1,6 @@
 import type { PlayerRole } from '../multiplayer/NetworkState';
 import type { MemoryDeck } from '../multiplayer/MemoryCards';
+import { getAudienceMode } from '../content/AudienceMode';
 import type { Phase6SharedState } from '../multiplayer/Phase6State';
 
 const elderAnswers = [
@@ -182,20 +183,22 @@ export class Phase6PuzzleOverlay {
   }
 
   private renderMemoryIntro(state: Phase6SharedState, role: PlayerRole): void {
+    const visitor = getAudienceMode() === 'guest';
     const paper = document.createElement('div'); paper.className = 'phase6-intro-paper';
     paper.innerHTML = `<span class="phase6-intro-kicker">NGƯỜI GIỮ TRĂNG</span>
       <h2>Kể cho nhau nghe</h2>
       <p class="world-voice">Có một lối về. Hãy kể cho nhau nghe điều mình đang thấy.</p>
       <div class="phase6-intro-divider" aria-hidden="true"></div>
-      <p class="game-instruction">Mỗi lượt, một người nhìn ảnh và kể. Người kia chọn ảnh ấy. Rồi đổi vai.</p>`;
+      <p class="game-instruction">${visitor ? 'Mỗi lượt, một người nhìn tranh và kể. Người kia chọn bức tranh ấy. Rồi đổi vai.' :
+        'Mỗi lượt, một người nhìn ảnh và kể. Người kia chọn ảnh ấy. Rồi đổi vai.'}</p>`;
     if (state.memoryIntroReady?.[role]) {
       const wait = document.createElement('small'); wait.className = 'phase6-intro-wait';
       wait.textContent = 'Đợi người kia...'; paper.appendChild(wait);
     } else {
       const button = document.createElement('button'); button.className = 'phase6-intro-button';
-      button.type = 'button'; button.textContent = 'Mở tấm ảnh đầu tiên';
+      button.type = 'button'; button.textContent = visitor ? 'Mở bức tranh đầu tiên' : 'Mở tấm ảnh đầu tiên';
       button.addEventListener('click', () => {
-        button.disabled = true; button.textContent = 'Đợi người kia mở ảnh...';
+        button.disabled = true; button.textContent = visitor ? 'Đợi người kia mở tranh...' : 'Đợi người kia mở ảnh...';
         this.onMemoryIntroReady();
       });
       paper.appendChild(button);
@@ -204,23 +207,26 @@ export class Phase6PuzzleOverlay {
   }
 
   private renderMemory(state: Phase6SharedState, role: PlayerRole, deck: MemoryDeck | null): void {
-    this.heading('Những tấm ảnh của hai người');
+    const visitor = getAudienceMode() === 'guest';
+    this.heading(visitor ? 'Những bức tranh đêm rằm' : 'Những tấm ảnh của hai người');
     if (!deck) {
-      this.paragraph(this.memoryLoadError ? 'Chưa mở được ảnh. Hãy tải lại trang rồi thử tiếp.' :
-        'Đang mở ảnh...', 'game-instruction');
+      this.paragraph(this.memoryLoadError ? 'Chưa mở được hình. Hãy tải lại trang rồi thử tiếp.' :
+        'Đang mở hình...', 'game-instruction');
       return;
     }
     const round = deck.rounds[state.memoryRound];
     if (!round) return;
     const viewer = round.viewerRole === role;
     if (viewer) {
-      this.paragraph('Hãy kể cho người kia nghe những gì bạn thấy trong ảnh.', 'game-instruction');
+      this.paragraph(visitor ? 'Hãy kể cho người kia nghe những gì bạn thấy trong tranh.' :
+        'Hãy kể cho người kia nghe những gì bạn thấy trong ảnh.', 'game-instruction');
       const card = deck.cards.find(item => item.id === round.targetCardId)!;
       const frame = document.createElement('div'); frame.className = 'featured';
       const img = document.createElement('img'); img.src = card.imageSrc; img.alt = card.alt || card.caption || '';
       frame.appendChild(img); this.root.appendChild(frame);
     } else {
-      this.paragraph('Nghe người kia kể, rồi chọn tấm ảnh đúng với lời kể.', 'game-instruction');
+      this.paragraph(visitor ? 'Nghe người kia kể, rồi chọn bức tranh đúng với lời kể.' :
+        'Nghe người kia kể, rồi chọn tấm ảnh đúng với lời kể.', 'game-instruction');
       if (state.memoryFeedback) this.paragraph(state.memoryFeedback);
       const choices = document.createElement('div'); choices.className = 'choices';
       round.choiceCardIds.forEach(id => {
@@ -229,7 +235,7 @@ export class Phase6PuzzleOverlay {
         button.className = 'memory-card'; button.dataset.cardId = id;
         const img = document.createElement('img'); img.src = card.imageSrc; img.alt = card.alt || card.caption || '';
         const label = document.createElement('span');
-        label.textContent = card.caption?.trim() || 'Một tấm ảnh';
+        label.textContent = card.caption?.trim() || (visitor ? 'Một bức tranh' : 'Một tấm ảnh');
         button.append(img, label);
         button.addEventListener('click', () => this.onMemoryChoice(id)); choices.appendChild(button);
       });

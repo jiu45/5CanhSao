@@ -3,6 +3,8 @@ import { AppRenderer } from './Renderer';
 import { SceneManager, GameSceneId } from '../scenes/SceneManager';
 import { StoryOverlay } from '../ui/StoryOverlay';
 import { CraftingUI } from '../ui/CraftingUI';
+import { AudienceGate } from '../ui/AudienceGate';
+import { chooseGuest } from '../content/AudienceMode';
 
 export class Game {
   public renderer: AppRenderer;
@@ -10,6 +12,7 @@ export class Game {
   private overlay: StoryOverlay;
   private craftingUI: CraftingUI;
   private clock: THREE.Clock;
+  private audienceGate: AudienceGate | null = null;
 
   constructor(container: HTMLElement) {
     this.renderer = new AppRenderer(container);
@@ -38,7 +41,17 @@ export class Game {
     }
 
     // Start with requested Scene or default Scene 0 (Time Travel)
-    this.sceneManager.goToScene(startScene);
+    if (startScene !== GameSceneId.TIME_TRAVEL && params.get('mock') !== 'true') {
+      // A room link or resumed scene starts after the same choice, without replaying the dedication.
+      this.audienceGate = new AudienceGate(!!roomParam);
+      this.audienceGate.show(() => {
+        this.audienceGate = null;
+        this.sceneManager.goToScene(startScene);
+      });
+    } else {
+      if (params.get('mock') === 'true') chooseGuest();
+      this.sceneManager.goToScene(startScene);
+    }
 
     // Expose for automated browser inspection
     (window as unknown as { game: Game; sceneManager: SceneManager }).game = this;

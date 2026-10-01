@@ -26,6 +26,7 @@ export class LionCharacter {
   public headGroup: THREE.Group;
   public bodySegments: THREE.Group[] = [];
   private headMaterial: THREE.MeshBasicMaterial;
+  private headBackingMaterial: THREE.MeshBasicMaterial;
   private openHeadTexture: THREE.CanvasTexture;
   private blinkHeadTexture: THREE.CanvasTexture;
   private ears: THREE.Group[] = [];
@@ -102,6 +103,19 @@ export class LionCharacter {
       side: THREE.DoubleSide
     });
     this.headMaterial = headMat;
+    // A shallow offset paper layer gives the flat mask a visible cut edge when
+    // the performers turn it, while preserving the established silhouette.
+    this.headBackingMaterial = new THREE.MeshBasicMaterial({
+      map: this.openHeadTexture,
+      color: 0x5c2428,
+      transparent: true,
+      opacity: 0.82,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    });
+    const headBacking = new THREE.Mesh(headGeo, this.headBackingMaterial);
+    headBacking.position.set(0.045, -0.045, -0.045);
+    this.headGroup.add(headBacking);
     const headMesh = new THREE.Mesh(headGeo, headMat);
     this.headGroup.add(headMesh);
 
@@ -127,10 +141,11 @@ export class LionCharacter {
 
     // Auspicious Red Ribbon Scroll dangling from smiling mouth
     const ribbonGeo = new THREE.PlaneGeometry(0.38, 0.95);
+    const ribbonTex = TextureGenerator.createLionRibbonTexture();
     const ribbonMat = new THREE.MeshBasicMaterial({
-      color: 0xef4444,
+      map: ribbonTex,
       transparent: true,
-      opacity: 0.95,
+      depthWrite: false,
       side: THREE.DoubleSide
     });
     this.ribbon = new THREE.Mesh(ribbonGeo, ribbonMat);
@@ -394,6 +409,7 @@ export class LionCharacter {
     const blinkAmount = this.isBlinking ? Math.sin(this.blinkProgress * Math.PI) : 0;
     const headTexture = blinkAmount > 0.55 ? this.blinkHeadTexture : this.openHeadTexture;
     if (this.headMaterial.map !== headTexture) this.headMaterial.map = headTexture;
+    if (this.headBackingMaterial.map !== headTexture) this.headBackingMaterial.map = headTexture;
 
     // -------------------------------------------------------------------------
     // 2. Twitching Ears (Nhấp nháy tai theo nhịp trống)

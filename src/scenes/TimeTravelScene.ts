@@ -6,6 +6,8 @@ import { StoryConfig } from '../config/StoryConfig';
 import { audioManager } from '../audio/AudioManager';
 import { MemoryPrelude } from '../ui/MemoryPrelude';
 import { DedicationPage } from '../ui/DedicationPage';
+import { AudienceGate } from '../ui/AudienceGate';
+import { chooseGuest } from '../content/AudienceMode';
 
 export class TimeTravelScene implements IScene {
   public scene: THREE.Scene;
@@ -25,6 +27,7 @@ export class TimeTravelScene implements IScene {
   private timerIds: number[] = [];
   private prelude: MemoryPrelude | null = null;
   private dedication: DedicationPage | null = null;
+  private audienceGate: AudienceGate | null = null;
 
   constructor(camera: THREE.PerspectiveCamera, overlay: StoryOverlay,
     onComplete: () => void, private readonly onSequenceStarted?: () => void) {
@@ -139,7 +142,22 @@ export class TimeTravelScene implements IScene {
     // The first leaf belongs to the recipient; the title follows its turn.
     this.overlay.enableTimeTravelEffects();
     this.dedication = new DedicationPage();
-    this.dedication.show(() => this.showOpeningTitle());
+    this.dedication.show(() => this.showAudienceGate());
+  }
+
+  private showAudienceGate(): void {
+    this.dedication = null;
+    // Scene jumps used for visual QA always use the public deck and letter.
+    if (new URLSearchParams(location.search).get('mock') === 'true') {
+      chooseGuest();
+      this.showOpeningTitle();
+      return;
+    }
+    this.audienceGate = new AudienceGate();
+    this.audienceGate.show(() => {
+      this.audienceGate = null;
+      this.showOpeningTitle();
+    });
   }
 
   private showOpeningTitle(): void {
@@ -229,5 +247,7 @@ export class TimeTravelScene implements IScene {
     this.prelude = null;
     this.dedication?.destroy();
     this.dedication = null;
+    this.audienceGate?.destroy();
+    this.audienceGate = null;
   }
 }

@@ -124,7 +124,8 @@ export class VillageWalkScene implements IScene {
 
     // 2. Large Moon overhead with celestial halo
     this.moon = new Moon();
-    this.moon.group.position.set(0, 11.5, -34);
+    this.moon.setVisualLevel(1.03, 0.52, 0xfff4e1);
+    this.moon.group.position.set(0, 10.1, -34);
     this.moon.directionalLight.position.set(0, 18, -25);
     this.moon.directionalLight.target.position.set(0, 1.5, -15);
     this.scene.add(this.moon.directionalLight.target);
@@ -808,7 +809,7 @@ export class VillageWalkScene implements IScene {
 
     // 4. Keep Moon high and proud as celestial anchor relative to camera
     this.moon.group.position.z = this.camera.position.z - 28.0;
-    this.moon.group.position.y = 11.5;
+    this.moon.group.position.y = 10.1;
     this.moon.update(this.camera);
 
     // 5. Autumn Wind Gust Mechanic (z between -18.5 and -22.5)

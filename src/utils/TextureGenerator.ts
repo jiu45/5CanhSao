@@ -1830,18 +1830,32 @@ export class TextureGenerator {
     ];
     maneLayers.forEach(layer => {
       ctx.fillStyle = layer.col;
-      const count = 16;
+      ctx.strokeStyle = 'rgba(91, 28, 26, .68)';
+      ctx.lineWidth = 2.2;
+      const count = 18;
       for (let i = 0; i <= count; i++) {
         const a = Math.PI * 0.85 + (i / count) * Math.PI * 1.3;
         const px = cx + Math.cos(a) * layer.r;
         const py = cy + Math.sin(a) * layer.r * 0.9;
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(a + Math.PI / 2);
         ctx.beginPath();
-        ctx.arc(px, py, layer.w * 0.5, 0, Math.PI * 2);
+        ctx.moveTo(0, -layer.w * .78);
+        ctx.quadraticCurveTo(layer.w * .65, -layer.w * .2, layer.w * .48, layer.w * .55);
+        ctx.quadraticCurveTo(0, layer.w * .3, -layer.w * .48, layer.w * .55);
+        ctx.quadraticCurveTo(-layer.w * .65, -layer.w * .2, 0, -layer.w * .78);
         ctx.fill();
+        ctx.stroke();
+        ctx.restore();
       }
     });
 
     // 2. Sculpted Dragon-Lion Face Base (Khuôn mặt lân truyền thống)
+    ctx.fillStyle = '#5f1721';
+    ctx.beginPath();
+    ctx.ellipse(cx + 5, cy + 21, 135, 118, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#b91c1c';
     ctx.beginPath();
     ctx.ellipse(cx, cy + 15, 125, 110, 0, 0, Math.PI * 2);
@@ -1859,7 +1873,29 @@ export class TextureGenerator {
       ctx.strokeStyle = '#f59e0b';
       ctx.lineWidth = 3;
       ctx.stroke();
+      // Lacquered cloud curls echo the painted paper masks used in a village dance.
+      ctx.strokeStyle = '#f3ad3f';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx + mx - Math.sign(mx) * 28, cy + 42);
+      ctx.quadraticCurveTo(cx + mx - Math.sign(mx) * 8, cy + 20,
+        cx + mx + Math.sign(mx) * 12, cy + 42);
+      ctx.quadraticCurveTo(cx + mx + Math.sign(mx) * 25, cy + 52,
+        cx + mx + Math.sign(mx) * 9, cy + 61);
+      ctx.stroke();
     });
+
+    // A small projecting nose makes the eyes, cheeks and jaw read as one mask.
+    ctx.fillStyle = '#701920';
+    ctx.beginPath();
+    ctx.moveTo(cx - 19, cy + 48);
+    ctx.quadraticCurveTo(cx, cy + 36, cx + 19, cy + 48);
+    ctx.quadraticCurveTo(cx + 16, cy + 69, cx, cy + 74);
+    ctx.quadraticCurveTo(cx - 16, cy + 69, cx - 19, cy + 48);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#f5ac3d'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#ef8940';
+    ctx.beginPath(); ctx.ellipse(cx, cy + 52, 9, 6, 0, 0, Math.PI * 2); ctx.fill();
 
     // 3. Golden Horn on Forehead with Luminous Jewel (Sừng lân thếp vàng & Gương bát quái)
     ctx.fillStyle = '#f59e0b';
@@ -1872,6 +1908,17 @@ export class TextureGenerator {
     ctx.strokeStyle = '#fef08a';
     ctx.lineWidth = 3.5;
     ctx.stroke();
+
+    // Twin gilt paper curls frame the forehead without competing with the eyes.
+    ctx.strokeStyle = '#e9a332'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + side * 22, cy - 95);
+      ctx.bezierCurveTo(cx + side * 65, cy - 112, cx + side * 107, cy - 91,
+        cx + side * 97, cy - 66);
+      ctx.quadraticCurveTo(cx + side * 86, cy - 48, cx + side * 76, cy - 63);
+      ctx.stroke();
+    }
 
     // Round lucky mirror on forehead
     ctx.fillStyle = '#f8fafc';
@@ -1975,34 +2022,51 @@ export class TextureGenerator {
     ctx.stroke();
 
     // White teeth
-    ctx.fillStyle = '#f8fafc';
+    ctx.fillStyle = '#efd7a4';
     for (let t = -60; t <= 60; t += 24) {
       ctx.fillRect(cx + t - 8, cy + 85, 16, 12);
     }
 
-    // Soft white beard flowing beneath chin (Râu lân trắng tinh)
-    ctx.fillStyle = '#fef3c7';
+    // Separate ivory paper tufts rather than a single blown-out white patch.
+    ctx.fillStyle = '#d8b978';
+    ctx.strokeStyle = '#8e442b';
+    ctx.lineWidth = 1.8;
     for (let b = -70; b <= 70; b += 16) {
       ctx.beginPath();
-      ctx.ellipse(cx + b, cy + 128, 10, 22, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + b, cy + 128, 8.5, 21, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
     }
 
-    // Auspicious Red Ribbon Scroll (Liễn đỏ thắm thêu hoa văn)
-    ctx.fillStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.moveTo(cx - 24, cy + 115);
-    ctx.lineTo(cx + 24, cy + 115);
-    ctx.quadraticCurveTo(cx + 32, cy + 180, cx + 20, cy + 235);
-    ctx.lineTo(cx - 20, cy + 235);
-    ctx.quadraticCurveTo(cx - 32, cy + 180, cx - 24, cy + 115);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }
 
-    return new THREE.CanvasTexture(canvas);
+  // A separate cut-paper liễn can sway with the head without a rectangular plane.
+  public static createLionRibbonTexture(): THREE.CanvasTexture {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128; canvas.height = 256;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#a51d24';
+    ctx.beginPath();
+    ctx.moveTo(24, 10); ctx.lineTo(104, 10);
+    ctx.quadraticCurveTo(108, 95, 98, 174);
+    ctx.lineTo(84, 239); ctx.lineTo(64, 218); ctx.lineTo(44, 239);
+    ctx.lineTo(30, 174); ctx.quadraticCurveTo(20, 95, 24, 10);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#df9b36'; ctx.lineWidth = 5; ctx.stroke();
+    ctx.strokeStyle = '#e6ac52'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(39, 30); ctx.lineTo(89, 30); ctx.stroke();
+    for (const y of [86, 134, 182]) {
+      ctx.beginPath();
+      ctx.moveTo(64, y - 15); ctx.quadraticCurveTo(88, y, 64, y + 16);
+      ctx.quadraticCurveTo(40, y, 64, y - 15);
+      ctx.stroke();
+    }
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
   }
 
   // 20B. Traditional Lion Ear Texture (Tai lân hình lá quạt viền lông vàng)
@@ -2031,26 +2095,36 @@ export class TextureGenerator {
     }
     ctx.closePath();
     ctx.fill();
+    ctx.strokeStyle = '#76211e'; ctx.lineWidth = 6; ctx.stroke();
+    ctx.strokeStyle = '#d99638'; ctx.lineWidth = 2.5; ctx.stroke();
 
     // Inner ear warm orange shading
-    ctx.fillStyle = '#f59e0b';
+    ctx.fillStyle = '#e3a43b';
     ctx.beginPath();
-    ctx.arc(64, 75, 28, 0, Math.PI * 2);
+    ctx.ellipse(64, 75, 27, 37, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = '#8d3524'; ctx.lineWidth = 4; ctx.stroke();
+    ctx.fillStyle = '#b9212d';
+    ctx.beginPath(); ctx.ellipse(64, 78, 15, 24, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#f3be67'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(64, 111); ctx.quadraticCurveTo(52, 86, 64, 42);
+    ctx.quadraticCurveTo(76, 86, 64, 111); ctx.stroke();
 
     // Fluffy golden fur fringe along outer perimeter
-    ctx.fillStyle = '#fef08a';
+    ctx.fillStyle = '#e9b458';
     const numTufts = 9;
     for (let i = 0; i <= numTufts; i++) {
       const a = (i / numTufts) * Math.PI * 1.2 + 0.3;
       const tx = 64 + Math.cos(a) * 48 * (side === 'left' ? -1 : 1);
       const ty = 75 - Math.sin(a) * 55;
       ctx.beginPath();
-      ctx.arc(tx, ty, 9, 0, Math.PI * 2);
+      ctx.arc(tx, ty, 6.5, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    return new THREE.CanvasTexture(canvas);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
   }
 
   // 21. Traditional Embroidered Silk Lion Body (Thân lân lụa đỏ thêu vảy rồng vàng gợn sóng)
