@@ -390,7 +390,7 @@ export class TogetherModeHelper {
         speedFactor: 0.0,
         isLeading: true,
         isTooFar: true,
-        promptMessage: 'Đợi bạn đồng hành cùng tiến bước nhé...'
+        promptMessage: 'Đợi người kia một chút.'
       };
     }
 
@@ -404,7 +404,7 @@ export class TogetherModeHelper {
       speedFactor: Math.max(0.0, Math.min(1.0, speedFactor)),
       isLeading: true,
       isTooFar: false,
-      promptMessage: 'Bạn đang đi hơi nhanh, hãy cùng sánh bước bên nhau...'
+      promptMessage: 'Chậm lại để đi cạnh nhau nhé.'
     };
   }
 }

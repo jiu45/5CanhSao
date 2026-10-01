@@ -3,14 +3,15 @@ import type { MemoryDeck } from '../multiplayer/MemoryCards';
 import type { Phase6SharedState } from '../multiplayer/Phase6State';
 
 const elderAnswers = [
-  ['lantern', 'Ngọn đèn'], ['drum', 'Tiếng trống'],
-  ['moon', 'Mặt Trăng'], ['feast', 'Mâm cỗ']
+  ['lantern', 'Chiếc đèn'], ['drum', 'Tiếng trống'],
+  ['moon', 'Mặt trăng'], ['feast', 'Mâm cỗ']
 ] as const;
 
 export class Phase6PuzzleOverlay {
   private readonly root: HTMLDivElement;
   private readonly style: HTMLStyleElement;
   private lastRenderKey = '';
+  private memoryLoadError = false;
 
   constructor(private onElderAnswer: (id: string) => void,
     private onMemoryChoice: (id: string) => void,
@@ -26,6 +27,12 @@ export class Phase6PuzzleOverlay {
       .phase6-keepsake h2 { margin:0 0 7px; font-size:21px; font-weight:400;
         letter-spacing:.035em; color:#ffe4ae; }
       .phase6-keepsake p { margin:5px 0 12px; line-height:1.42; font-size:15px; }
+      .phase6-keepsake .world-voice { font-family:'Segoe UI',system-ui,Arial,sans-serif;
+        font-size:clamp(16px,2.2vw,19px); font-style:normal; font-weight:500; color:#ffe4ae;
+        border-left:2px solid #e8bb78; padding:5px 13px; margin:12px auto 18px;
+        max-width:590px; text-align:left; }
+      .phase6-keepsake .game-instruction { font-family:'Segoe UI',system-ui,Arial,sans-serif;
+        font-size:14px; font-style:normal; color:#d9deea; }
       .phase6-keepsake .choices { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:11px; }
       .phase6-keepsake button { cursor:pointer; font:inherit; }
       .phase6-keepsake:not(.memory-mode) button {
@@ -89,6 +96,10 @@ export class Phase6PuzzleOverlay {
         color:#fff2d2; margin:0 0 17px; letter-spacing:.01em; }
       .phase6-intro-paper p { font:400 clamp(16px,2.25vw,18px)/1.65 'Segoe UI',system-ui,sans-serif;
         color:#e9e4db; margin:0 auto 13px; max-width:510px; }
+      .phase6-intro-paper .world-voice { font:500 clamp(17px,2.5vw,21px)/1.55 'Segoe UI',system-ui,sans-serif;
+        color:#ffe4ae; padding:0; border:0; text-align:center; }
+      .phase6-intro-paper .game-instruction { font:400 14px/1.55 'Segoe UI',system-ui,sans-serif;
+        color:#d9deea; }
       .phase6-intro-divider { width:76px; height:1px; margin:21px auto;
         background:linear-gradient(90deg,transparent,#f5d796,transparent); }
       .phase6-keepsake.intro-mode .phase6-intro-button { margin-top:9px; padding:12px 28px;
@@ -124,7 +135,7 @@ export class Phase6PuzzleOverlay {
   }
 
   public render(state: Phase6SharedState, role: PlayerRole, deck: MemoryDeck | null): void {
-    const key = `${state.revision}:${state.stage}:${role}:${!!deck}`;
+    const key = `${state.revision}:${state.stage}:${role}:${!!deck}:${this.memoryLoadError}`;
     if (key === this.lastRenderKey) return;
     this.lastRenderKey = key;
     this.root.replaceChildren();
@@ -139,21 +150,28 @@ export class Phase6PuzzleOverlay {
     else if (memory) this.renderMemory(state, role, deck);
   }
 
+  public setMemoryLoadError(): void {
+    this.memoryLoadError = true;
+    this.lastRenderKey = '';
+  }
+
   private heading(text: string): void {
     const heading = document.createElement('h2'); heading.textContent = text; this.root.appendChild(heading);
   }
 
-  private paragraph(text: string): void {
-    const paragraph = document.createElement('p'); paragraph.textContent = text; this.root.appendChild(paragraph);
+  private paragraph(text: string, kind?: 'world-voice' | 'game-instruction'): void {
+    const paragraph = document.createElement('p'); paragraph.textContent = text;
+    if (kind) paragraph.className = kind;
+    this.root.appendChild(paragraph);
   }
 
   private renderElder(state: Phase6SharedState, role: PlayerRole): void {
-    this.heading('Dưới mái hiên của ông');
-    this.paragraph('Trong một đêm Trung Thu, thứ gì hai người cùng nhìn thấy dù đứng rất xa nhau?');
+    this.heading('Dưới mái hiên');
+    this.paragraph('Dù đứng xa nhau, hai đứa vẫn nhìn thấy cùng một thứ. Là gì nhỉ?', 'world-voice');
     if (state.elderAnswers[role]) {
-      this.paragraph('Bạn đã chọn. Chờ ngọn đèn kia cùng trả lời...'); return;
+      this.paragraph('Đợi người kia chọn nhé.', 'game-instruction'); return;
     }
-    if (state.elderFeedback) this.paragraph(state.elderFeedback);
+    if (state.elderFeedback) this.paragraph(state.elderFeedback, 'world-voice');
     const choices = document.createElement('div'); choices.className = 'choices';
     elderAnswers.forEach(([id, label]) => {
       const button = document.createElement('button'); button.type = 'button';
@@ -166,18 +184,18 @@ export class Phase6PuzzleOverlay {
   private renderMemoryIntro(state: Phase6SharedState, role: PlayerRole): void {
     const paper = document.createElement('div'); paper.className = 'phase6-intro-paper';
     paper.innerHTML = `<span class="phase6-intro-kicker">NGƯỜI GIỮ TRĂNG</span>
-      <h2>Hai ánh đèn, một ký ức</h2>
-      <p>Ông đã thấy lối đưa hai người về bên nhau. Nhưng ánh sáng chỉ hiện ra khi mỗi người lắng nghe điều người kia đang nhìn thấy.</p>
+      <h2>Kể cho nhau nghe</h2>
+      <p class="world-voice">Có một lối về. Hãy kể cho nhau nghe điều mình đang thấy.</p>
       <div class="phase6-intro-divider" aria-hidden="true"></div>
-      <p>Một người kể về tấm ảnh mình nhận được, người kia chọn đúng ký ức ấy. Rồi hai người đổi vai.</p>`;
+      <p class="game-instruction">Mỗi lượt, một người nhìn ảnh và kể. Người kia chọn ảnh ấy. Rồi đổi vai.</p>`;
     if (state.memoryIntroReady?.[role]) {
       const wait = document.createElement('small'); wait.className = 'phase6-intro-wait';
-      wait.textContent = 'Đợi ngọn đèn kia cùng mở ký ức...'; paper.appendChild(wait);
+      wait.textContent = 'Đợi người kia...'; paper.appendChild(wait);
     } else {
       const button = document.createElement('button'); button.className = 'phase6-intro-button';
-      button.type = 'button'; button.textContent = 'Cùng mở ký ức';
+      button.type = 'button'; button.textContent = 'Mở tấm ảnh đầu tiên';
       button.addEventListener('click', () => {
-        button.disabled = true; button.textContent = 'Đang chờ ánh đèn kia...';
+        button.disabled = true; button.textContent = 'Đợi người kia mở ảnh...';
         this.onMemoryIntroReady();
       });
       paper.appendChild(button);
@@ -186,19 +204,23 @@ export class Phase6PuzzleOverlay {
   }
 
   private renderMemory(state: Phase6SharedState, role: PlayerRole, deck: MemoryDeck | null): void {
-    this.heading('Người Giữ Trăng · Ký ức hai ngọn đèn');
-    if (!deck) { this.paragraph('Đang mở những tấm ảnh ký ức...'); return; }
+    this.heading('Những tấm ảnh của hai người');
+    if (!deck) {
+      this.paragraph(this.memoryLoadError ? 'Chưa mở được ảnh. Hãy tải lại trang rồi thử tiếp.' :
+        'Đang mở ảnh...', 'game-instruction');
+      return;
+    }
     const round = deck.rounds[state.memoryRound];
     if (!round) return;
     const viewer = round.viewerRole === role;
     if (viewer) {
-      this.paragraph('Hãy kể cho người đồng hành điều bạn nhìn thấy. Người ấy sẽ chọn tấm ảnh đúng.');
+      this.paragraph('Hãy kể cho người kia nghe những gì bạn thấy trong ảnh.', 'game-instruction');
       const card = deck.cards.find(item => item.id === round.targetCardId)!;
       const frame = document.createElement('div'); frame.className = 'featured';
       const img = document.createElement('img'); img.src = card.imageSrc; img.alt = card.alt || card.caption || '';
       frame.appendChild(img); this.root.appendChild(frame);
     } else {
-      this.paragraph('Lắng nghe người bên kia kể về tấm ảnh. Chọn ký ức mà bạn nghĩ người ấy đang thấy.');
+      this.paragraph('Nghe người kia kể, rồi chọn tấm ảnh đúng với lời kể.', 'game-instruction');
       if (state.memoryFeedback) this.paragraph(state.memoryFeedback);
       const choices = document.createElement('div'); choices.className = 'choices';
       round.choiceCardIds.forEach(id => {
@@ -207,13 +229,13 @@ export class Phase6PuzzleOverlay {
         button.className = 'memory-card'; button.dataset.cardId = id;
         const img = document.createElement('img'); img.src = card.imageSrc; img.alt = card.alt || card.caption || '';
         const label = document.createElement('span');
-        label.textContent = card.caption?.trim() || 'Ký ức chưa đặt tên';
+        label.textContent = card.caption?.trim() || 'Một tấm ảnh';
         button.append(img, label);
         button.addEventListener('click', () => this.onMemoryChoice(id)); choices.appendChild(button);
       });
       this.root.appendChild(choices);
     }
-    const roundLabel = document.createElement('small'); roundLabel.textContent = `Ký ức ${state.memoryRound + 1} / 2`;
+    const roundLabel = document.createElement('small'); roundLabel.textContent = `Lượt ${state.memoryRound + 1}/2`;
     this.root.appendChild(roundLabel);
   }
 

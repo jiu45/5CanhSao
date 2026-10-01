@@ -13,10 +13,10 @@ export class CraftingUI {
   public onBeforeAdvance?: (nextStep: number) => boolean;
 
   private steps: CraftStep[] = [
-    { id: 1, name: "1. Khung nan tre", icon: "🎋", desc: "Chạm nan tre và chọn dáng đèn" },
-    { id: 2, name: "2. Giấy kiếng màu", icon: "🏮", desc: "Dán lớp áo trong veo mùa thu" },
-    { id: 3, name: "3. Dây kẽm và cán tre", icon: "✨", desc: "Buộc nút thắt và gắn cán cầm" },
-    { id: 4, name: "4. Thắp nến đón trăng", icon: "🕯️", desc: "Thắp sáng ngọn lửa ấm áp" }
+    { id: 1, name: "1. Uốn khung", icon: "🎋", desc: "Chạm nan tre để chọn dáng đèn" },
+    { id: 2, name: "2. Dán giấy", icon: "🏮", desc: "Phủ giấy màu lên khung" },
+    { id: 3, name: "3. Gắn cán", icon: "✨", desc: "Buộc dây, gắn cán cầm" },
+    { id: 4, name: "4. Thắp nến", icon: "🕯️", desc: "Đưa nến vào giữa đèn" }
   ];
 
   constructor() {
@@ -25,7 +25,7 @@ export class CraftingUI {
     this.container.style.display = 'none';
 
     this.container.innerHTML = `
-      <div class="crafting-prompt-text">Chạm vào vật đang sáng trên chiếc chiếu để làm đèn</div>
+      <div class="crafting-prompt-text">Chạm vào vật đang sáng trên chiếu</div>
       <div class="crafting-tray"></div>
     `;
 

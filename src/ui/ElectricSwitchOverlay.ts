@@ -43,8 +43,8 @@ export class ElectricSwitchOverlay {
       <div class="switch-chassis">
         <!-- Elegant Header Typography -->
         <div class="switch-header">
-          <div class="switch-title">CHIẾC ĐÈN CỦA BẠN</div>
-          <div class="switch-subtitle">CÔNG TẮC BÓNG LED</div>
+          <div class="switch-title">CHIẾC ĐÈN TRONG TAY</div>
+          <div class="switch-subtitle">BẬT ĐÈN</div>
         </div>
 
         <!-- Center Mechanism Area -->
@@ -61,8 +61,8 @@ export class ElectricSwitchOverlay {
               data-testid="electric-toggle-switch"
               role="switch"
               aria-checked="${this.isOn ? 'true' : 'false'}"
-              aria-label="Công tắc đèn lồng của bạn"
-              title="Gạt công tắc đèn lồng [Phím E]"
+              aria-label="Công tắc chiếc đèn của bạn"
+              title="Bật hoặc tắt đèn (E)"
             >
               <div class="lever-shaft">
                 <div class="lever-knob"></div>
@@ -74,14 +74,14 @@ export class ElectricSwitchOverlay {
             <div
               id="switch-indicator-led"
               class="switch-indicator-led ${this.isOn ? 'led-on' : 'led-off'}"
-              title="Trạng thái bóng LED"
+              title="Trạng thái đèn: ${this.isOn ? 'bật' : 'tắt'}"
             ></div>
             <span class="led-subtext">${this.isOn ? 'ĐÃ BẬT' : 'ĐÃ TẮT'}</span>
           </div>
         </div>
 
         <!-- Hotkey Helper Prompt -->
-        <p class="switch-prompt-helper">Nhấn <strong>[E]</strong> hoặc gạt cần công tắc</p>
+        <p class="switch-prompt-helper">Nhấn <strong>E</strong> hoặc chạm công tắc</p>
       </div>
     `;
 
@@ -134,6 +134,7 @@ export class ElectricSwitchOverlay {
 
     this.ledEl.classList.remove('led-on', 'led-off');
     this.ledEl.classList.add(isOn ? 'led-on' : 'led-off');
+    this.ledEl.title = `Trạng thái đèn: ${isOn ? 'bật' : 'tắt'}`;
 
     const ledSubtext = this.container.querySelector('.led-subtext');
     if (ledSubtext) {

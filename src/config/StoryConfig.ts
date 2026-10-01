@@ -1,8 +1,4 @@
 export interface StoryConfigType {
-  playerA: string;
-  playerB: string;
-  yearPast: string;
-  locationPast: string;
   cinematicPeriodTitle: string;
   openingSubtitles: string[];
   craftingSubtitles: {
@@ -59,76 +55,70 @@ export interface StoryConfigType {
     nearFestivalHandoff: string;
     actionEnterFestival: string;
   };
-  finalLetter: string;
 }
 
 export const StoryConfig: StoryConfigType = {
-  playerA: "Anh",
-  playerB: "Em",
-  yearPast: "Cuối Thế Kỷ 20",
-  locationPast: "Làng Quê Bắc Bộ",
-  cinematicPeriodTitle: "Một vầng trăng mở lối về miền ký ức...",
+  cinematicPeriodTitle: "",
   openingSubtitles: [
-    "Vẫn là vầng trăng ấy, dù bao mùa đã đi qua...",
-    "Nghe không? Tiếng trống ếch đang vọng về từ một con ngõ cũ.",
-    "Một chiếc đèn nhỏ đã chờ ai đó thắp sáng đêm rằm."
+    "",
+    "Nghe như có tiếng trống vọng lại từ một con ngõ cũ...",
+    ""
   ],
   craftingSubtitles: {
-    step0: "Trên chiếc chiếu cói, chiếc đèn đầu tiên bắt đầu từ vài thanh nan tre.",
-    step1: "Những thanh nan tre khép lại thành khung sao năm cánh.",
-    step2: "Lớp giấy kiếng mỏng phủ lên khung tre; ánh trăng khẽ xuyên qua màu giấy.",
-    step3: "Dây kẽm giữ chặt khung tre; cán đèn đã sẵn sàng để mang ra ngoài.",
-    completed: "Từ vài thanh nan tre, bạn đã có một ngọn đèn để mang ra đêm hội."
+    step0: "",
+    step1: "Nan tre đã thành một ngôi sao.",
+    step2: "Giấy kiếng phủ lên khung. Chiếc đèn bắt đầu có màu.",
+    step3: "Buộc cho chắc. Chiếc đèn đã có cán cầm.",
+    completed: "Sáng rồi."
   },
   doorRevealSubtitles: [
-    "Cầm chiếc đèn bạn vừa làm, đẩy nhẹ cánh cửa gỗ bước ra con ngõ làng...",
-    "Ngoài kia, cả làng quê đang rộn rã tiếng cười đùa và tiếng trống ếch rước đèn."
+    "Ngoài kia có người đang gọi nhau.",
+    "Ngoài ngõ, tiếng cười đã theo tiếng trống về phía sân đình."
   ],
   villageWalk: {
-    arrivalHint: "Tiếng trống hội vọng đến từ cuối con đường tre. Cứ theo ánh đèn mà bước.",
-    candleWarning: "Gió thu đang thổi nhè nhẹ, chớ chạy quá vội kẻo nến chao nghiêng nhé...",
-    windGustWarning: "Gió thốc qua rặng tre. Ánh nến chao nghiêng trong tay bạn!",
-    vignetteFamily: "Bên hiên nhà, hơi trà sen quyện trong tiếng chuyện trò.",
-    vignetteKids: "Lũ trẻ xóm trên rước đèn cá chép chạy về sân đình. Theo tiếng cười của chúng nào!",
-    vignetteFeast: "Một mâm cỗ trông trăng chờ cả nhà bên đường làng.",
-    vignetteTempleGate: "Cổng đình đã hiện ra. Tiếng trống lân mỗi lúc một gần."
+    arrivalHint: "Tiếng trống mỗi lúc một gần.",
+    candleWarning: "",
+    windGustWarning: "Gió mạnh lên rồi.",
+    vignetteFamily: "Bên hiên, tiếng chuyện trò lẫn trong mùi trà nóng.",
+    vignetteKids: "Lũ trẻ xóm trên chạy trước rồi. Theo chúng ra sân đình thôi!",
+    vignetteFeast: "",
+    vignetteTempleGate: ""
   },
   festivalSquare: {
-    revealGateEntry: "Qua cổng đình, sân gạch mở ra dưới trăng.",
-    revealCrowdGathering: "Đèn ông sao và đèn lon sữa bò nhấp nhô trên đầu lũ trẻ.",
-    revealLionPeeking: "Từ sau vòng người, chiếc đầu lân đỏ chợt ló ra.",
-    revealLionFullDance: "Con lân nhào qua nhịp trống. Ánh đèn bạn hòa vào vòng sáng dưới sân đình.",
-    actionJoinPerformance: "Chăm chú dõi theo từng nhịp múa lân 🦁",
-    transitionToLion: "Tiếng trống đưa ký ức đến thật gần... thử hòa mình vào một nhịp múa lân nào!",
-    lionPovIntro: "Mở mắt ra giữa tiếng reo hò rộn rã! Hãy vung đầu lân theo từng nhịp trống giòn tan...",
-    gesturePrompt1: "Điệu 1: Lắc đầu sang phải — Vẫy bờm nghênh đón bạn bè",
-    gesturePrompt2: "Điệu 2: Nghiêng đầu sang trái — Chớp mắt đùa vui dưới trăng",
-    gesturePrompt3: "Điệu 3: Chồm lân vút lên — Tung bay rực rỡ chúc phúc đêm rằm",
-    transitionToSpectator: "Tiếng reo hò vỡ òa... Con lân cúi đầu chào, bạn nhẹ nhàng bừng tỉnh bên vầng sáng quen thuộc.",
-    spectatorPayoff: "Ngọn nến trong tay bạn vẫn ấm giữa sân đình.",
-    actionCompleteIterationB: "Hoàn thành điệu múa lân 🦁",
-    actionStartMemoryAscent: "Hòa vào vầng trăng ký ức 🌕",
-    ascentStage1: "Tiếng trống vẫn rung dưới chân bạn.",
-    ascentStage1Lantern: "Chiếc đèn bạn tự tay làm hòa vào đoàn đèn dưới sân đình.",
-    ascentStage2Village: "Mái đình và những tiếng cười lùi dần trong gió.",
-    ascentStage3Constellation: "Từ trên cao, đêm hội chỉ còn là những chấm sáng nhỏ.",
-    ascentStage4Moon: "Ngọn đèn dưới sân đình nhỏ dần; vầng trăng lớn lên trước mắt bạn."
+    revealGateEntry: "Tiếng trống ở ngay đây.",
+    revealCrowdGathering: "",
+    revealLionPeeking: "",
+    revealLionFullDance: "",
+    actionJoinPerformance: "Thử múa cùng nhịp trống",
+    transitionToLion: "",
+    lionPovIntro: "",
+    gesturePrompt1: "",
+    gesturePrompt2: "",
+    gesturePrompt3: "",
+    transitionToSpectator: "",
+    spectatorPayoff: "Ngọn nến vẫn cháy trong tay.",
+    actionCompleteIterationB: "",
+    actionStartMemoryAscent: "Ngước nhìn trăng",
+    ascentStage1: "Tiếng trống còn ở phía dưới.",
+    ascentStage1Lantern: "",
+    ascentStage2Village: "",
+    ascentStage3Constellation: "",
+    ascentStage4Moon: ""
   },
   modernArrival: {
-    moonTransition1: "Nhiều năm trôi qua. Vầng trăng vẫn ở đó.",
-    lanternEvolve: "Trên lối đá, một ánh đèn mới đang sáng lên.",
-    parkDescent: "Triền cỏ, lối đá và những ngọn đèn điện dần hiện ra dưới chân bạn.",
-    elevatedViewpoint: "Trên triền đồi, tác phẩm Mặt Trăng sáng giữa công viên vắng.",
-    soundCueArrival: "Từ bên kia đồi, một nhịp trống lân vọng tới.",
-    actionTurnToFestival: "Hướng về phía đêm hội rực rỡ 🏮",
-    festivalVistaReveal: "Tháp Đèn Kéo Quân xoay chậm giữa khu hội ngoài.",
-    festivalVistaAnticipation: "Những hình lân quay theo ánh đèn. Tiếng hội đã gần hơn.",
-    actionEnterPark: "Theo lối đèn vào khu hội 🏮",
-    pivotToGrandSquare: "Nhịp trống dẫn bạn về phía những dải đèn trên cao.",
-    approachingFestival: "Con đường lát đá dẫn xuống khu hội.",
-    midApproach: "Người và đèn cùng đổ về cổng hội.",
-    nearFestivalHandoff: "Dưới vòm cổng, ánh đèn rước hội đã ở rất gần.",
-    actionEnterFestival: "Bước vào đêm hội 🏮"
-  },
-  finalLetter: "Dù Trung Thu này hai đứa mình ở cách xa nhau, nhưng ngọn nến trong chiếc đèn này sẽ luôn sưởi ấm và soi sáng dẫn lối cho chúng mình cùng nhau."
+    moonTransition1: "Trăng vẫn ở đó.",
+    lanternEvolve: "",
+    parkDescent: "",
+    elevatedViewpoint: "",
+    soundCueArrival: "Lại là tiếng trống ấy.",
+    actionTurnToFestival: "Quay theo tiếng trống",
+    festivalVistaReveal: "",
+    festivalVistaAnticipation: "Tiếng hội đã gần.",
+    actionEnterPark: "Theo lối đèn",
+    pivotToGrandSquare: "",
+    approachingFestival: "",
+    midApproach: "",
+    nearFestivalHandoff: "",
+    actionEnterFestival: "Bước vào khu hội"
+  }
 };

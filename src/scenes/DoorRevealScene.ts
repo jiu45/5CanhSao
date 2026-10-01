@@ -332,7 +332,7 @@ export class DoorRevealScene implements IScene {
 
     const t3 = window.setTimeout(() => {
       this.onReadyToLeave?.();
-      this.overlay.showNextButton("Bước qua ngưỡng cửa rước đèn 🏮", () => {
+      this.overlay.showNextButton("Ra ngõ", () => {
         this.startThresholdWalk();
       });
     }, 3200);
@@ -344,7 +344,7 @@ export class DoorRevealScene implements IScene {
   private startThresholdWalk() {
     audioManager.setScoreMood('village');
     this.overlay.hideNextButton();
-    this.overlay.setSubtitle("Bước chân qua bậc thềm gỗ mộc, hòa mình vào đêm hội trăng rằm...", 4000);
+    this.overlay.clearSubtitle();
     this.isWalkingThroughThreshold = true;
     audioManager.playLanternParadeCall(0.08);
     audioManager.playFrogDrum(2.2);

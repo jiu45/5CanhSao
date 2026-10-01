@@ -59,6 +59,13 @@ function wrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): st
   const lines: string[] = [];
   let line = '';
   for (const word of words) {
+    // Keep punctuation with the preceding word even if the handwritten letter
+    // happens to contain a space before it. A lone mark makes a bad film beat.
+    if (/^[.,!?;:…]+$/.test(word)) {
+      if (line) line += word;
+      else if (lines.length) lines[lines.length - 1] += word;
+      continue;
+    }
     const next = line ? `${line} ${word}` : word;
     if (ctx.measureText(next).width > maxWidth && line) {
       lines.push(line); line = word;
@@ -79,6 +86,7 @@ export class FinaleMoment {
   private readonly messageTexture: THREE.CanvasTexture;
   private readonly messageCanvas: HTMLCanvasElement;
   private lastText = '';
+  private compactText = false;
 
   constructor() {
     this.group.position.set(176, 0, -83);
@@ -119,8 +127,10 @@ export class FinaleMoment {
   }
 
   public drawMessage(text: string): void {
-    if (text === this.lastText) return;
+    const compact = window.innerWidth / Math.max(1, window.innerHeight) < 0.85;
+    if (text === this.lastText && compact === this.compactText) return;
     this.lastText = text;
+    this.compactText = compact;
     const ctx = this.messageCanvas.getContext('2d')!;
     ctx.clearRect(0, 0, 1024, 512);
     if (text) {
@@ -130,7 +140,7 @@ export class FinaleMoment {
       backdrop.addColorStop(1, 'rgba(20,31,48,0)');
       ctx.fillStyle = backdrop; ctx.fillRect(0, 0, 1024, 512);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.font = '600 51px "Segoe UI", Arial, sans-serif';
+      ctx.font = `600 ${compact ? 64 : 51}px "Segoe UI", Arial, sans-serif`;
       const lines = wrap(ctx, text, 790);
       const lineHeight = 73;
       const top = 256 - (lines.length - 1) * lineHeight / 2;
@@ -150,6 +160,10 @@ export class FinaleMoment {
 
   public update(together: number, overlap: number, messageOpacity: number,
     text: string, time: number): void {
+    // The in-world lettering is composed for a wide frame. Keep the entire
+    // sentence inside a portrait viewport without altering the plaza camera.
+    const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+    this.message.scale.setScalar(Math.min(1, Math.max(0.49, aspect / 0.9)));
     this.drawMessage(text);
     this.pools.forEach((pool, i) => {
       pool.position.z = (i === 0 ? -1 : 1) * (1.42 - overlap * 0.85);

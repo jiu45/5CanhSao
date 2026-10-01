@@ -66,7 +66,7 @@ export class MemoryPrelude {
           <circle cx="655" cy="585" r="65" fill="#ffc46a" opacity=".09"/>
         </g>
       </svg>
-      <div class="memory-prelude-copy"><span class="memory-prelude-kicker">MỘT ĐÊM TRĂNG CŨ</span>
+      <div class="memory-prelude-copy"><span class="memory-prelude-kicker">ĐÊM RẰM NĂM ẤY</span>
         <p class="memory-prelude-line"></p>
         <button class="memory-prelude-next" type="button"></button>
       </div>`;
@@ -85,10 +85,10 @@ export class MemoryPrelude {
   private render(): void {
     this.root.dataset.page = String(this.page);
     this.root.querySelector<HTMLElement>('.memory-prelude-line')!.textContent = this.page === 0
-      ? 'Ngày ấy, dưới vầng trăng này, con ngõ nhỏ dẫn về một căn nhà sáng đèn.'
-      : 'Ngày ấy, bạn còn bé. Nan tre trên chiếu cói đang chờ đôi tay bạn.';
+      ? 'Cuối con ngõ, một căn nhà vẫn còn sáng.'
+      : 'Trên chiếu cói, mấy thanh nan tre đang chờ được uốn thành đèn.';
     this.root.querySelector<HTMLButtonElement>('.memory-prelude-next')!.textContent = this.page === 0
-      ? 'Lật trang ký ức →' : 'Chạm vào nan tre →';
+      ? 'Vào nhà →' : 'Cầm nan tre lên →';
   }
 
   private next(): void {

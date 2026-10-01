@@ -193,9 +193,9 @@ export class RoomManager {
     }
 
     if (copied) {
-      this.showToast('Đã sao chép link mời vào clipboard!');
+      this.showToast('Đã sao chép lời mời.');
     } else {
-      this.showToast('Không thể sao chép tự động. Hãy sao chép link trên thanh địa chỉ.');
+      this.showToast('Chưa sao chép được. Hãy sao chép đường dẫn trong ô bên dưới.');
     }
 
     return copied;
@@ -416,7 +416,7 @@ export class RoomManager {
     }
 
     const rejectionMessage =
-      'Hai ngọn đèn đã sum vầy cùng nhau. Cung đường hội này hiện đã có đủ hai bạn đồng hành. Hãy tạo một phòng mới để cùng thắp sáng hành trình của riêng bạn nhé.';
+      'Lối này đã có đủ hai người. Hãy tạo một lối đi mới để cùng chơi.';
 
     this.onRoomFullRejected?.(rejectionMessage);
     this.showRoomFullDialog();
@@ -447,14 +447,13 @@ export class RoomManager {
           <span class="dialog-lantern-heart">✨</span>
           <span class="dialog-lantern-icon">🌟</span>
         </div>
-        <h2 id="dialog-title" class="trungthu-dialog-title">Hai ngọn đèn đã sum vầy cùng nhau</h2>
+        <h2 id="dialog-title" class="trungthu-dialog-title">Lối đi đã đủ hai người</h2>
         <p class="trungthu-dialog-desc">
-          Cung đường hội này hiện đã có đủ hai bạn đồng hành, mỗi người mang theo một chiếc đèn của riêng mình.
-          Hãy tạo một cung đường mới để cùng thắp sáng hành trình của riêng bạn nhé.
+          Mỗi lượt đi dành cho hai người. Hãy mở một lượt đi khác.
         </p>
         <div class="trungthu-dialog-actions">
           <button id="btn-create-new-room" class="cinematic-btn trungthu-dialog-btn">
-            Tạo cung đường mới
+            Tạo lượt đi mới
           </button>
         </div>
       </div>

@@ -69,8 +69,13 @@ export class Phase6FestivalScene implements IScene {
   private pointerHold = false;
   private keyHold = false;
   private separationElapsed = -1;
+  private separationSubtitleAt = 0;
   private reunionHoldUntil = 0;
   private reunionSubtitleAt = 0;
+  private reunionHudAt = 0;
+  private reunionTimingPending = false;
+  private separationHudAt = 0;
+  private lastHudCopy = '';
   private lastStage: Phase6Stage | null = null;
   private lastRevision = -1;
   private lastCrowdTier = -1;
@@ -141,7 +146,8 @@ export class Phase6FestivalScene implements IScene {
     void loadMemoryDeck().then(deck => { this.memoryDeck = deck; this.renderUi(); })
       .catch(error => {
         console.error('[Phase 6] Memory deck:', error);
-        this.overlay.setSubtitle('Chưa tìm thấy những tấm ảnh ký ức.', 0);
+        this.puzzleOverlay?.setMemoryLoadError();
+        this.renderUi();
       });
     const url = new URL(window.location.href);
     url.searchParams.set('scene', '7');
@@ -152,7 +158,7 @@ export class Phase6FestivalScene implements IScene {
     this.updateTransforms();
     this.updateCamera(1, true);
     this.overlay.hideNextButton();
-    this.overlay.setSubtitle('Rời sân đèn kéo quân, hai ngọn đèn bước sâu vào phố hội.', 5000);
+    this.overlay.clearSubtitle();
   }
 
   private setupLanterns(): void {
@@ -217,7 +223,7 @@ export class Phase6FestivalScene implements IScene {
       this.remoteLantern.group.visible = false;
       this.isMoving = false;
       this.updateHud();
-      this.overlay.setSubtitle('Ngọn đèn kia tạm rời lối hội. Bạn có thể chờ họ quay lại.', 3500);
+      this.overlay.clearSubtitle();
     };
     this.roomManager.onConnectionStatus = status => {
       if (status === 'SUBSCRIBED') { this.announceReady(); this.requestSnapshot(); }
@@ -361,22 +367,24 @@ export class Phase6FestivalScene implements IScene {
     this.lastStage = state.stage;
     this.lastRevision = state.revision;
     if (state.stage === 'ELDER_PUZZLE' && previous !== state.stage) {
-      this.emitHook('elderEnter'); this.overlay.setSubtitle('Ông lão mời hai ngọn đèn dừng chân dưới mái hiên.', 4000);
+      this.emitHook('elderEnter');
+      this.overlay.clearSubtitle();
     }
     if (state.elderResolved && previous === 'ELDER_PUZZLE') {
       this.emitHook('elderSuccess'); this.emitHook('crowdBuildup');
-      this.overlay.setSubtitle('Ông gật đầu. Phía trước, tiếng hội dần đông hơn.', 4000);
+      this.overlay.setSubtitle('Ông gật đầu: ‘Đi tiếp đi.’', 4000, false, 'default', 'dialogue');
     }
     if (state.separated && this.routeId === Phase6RouteId.shared && this.separationElapsed < 0) {
       this.beginSeparation();
     }
     if (state.stage === 'MEMORY_PUZZLE' && previous !== state.stage) {
+      this.separationSubtitleAt = 0;
       this.emitHook('memoryStart');
       this.overlay.clearSubtitle();
     }
     if (state.memorySolved && previous === 'MEMORY_PUZZLE') {
       this.emitHook('memorySuccess'); this.emitHook('guidance', { target: 'reunion' });
-      this.overlay.setSubtitle('Một vệt sáng nhỏ dẫn bạn đi tìm ngọn đèn kia.', 4000);
+      this.overlay.clearSubtitle();
     }
     if (state.memorySolved && (this.routeId === Phase6RouteId.host || this.routeId === Phase6RouteId.guest)) {
       this.changeRoute(rejoinRoute(this.role));
@@ -386,8 +394,13 @@ export class Phase6FestivalScene implements IScene {
     }
     if (state.reunited && this.routeId !== Phase6RouteId.final) {
       this.changeRoute(Phase6RouteId.final);
-      this.reunionHoldUntil = performance.now() + 4300;
-      this.reunionSubtitleAt = performance.now() + 2100;
+      // Begin the quiet beat on the first visible frame, after the route and
+      // camera have been prepared. Scene preparation can take several seconds
+      // on a phone, so a timer started here would expire before the reveal.
+      this.reunionTimingPending = true;
+      this.reunionHoldUntil = Infinity;
+      this.reunionSubtitleAt = 0;
+      this.reunionHudAt = Infinity;
       // The two rejoin paths face different directions. Cut to the authored
       // two-lantern shot now, before a slow camera lerp can sweep into darkness.
       this.updateCamera(1, true);
@@ -400,7 +413,7 @@ export class Phase6FestivalScene implements IScene {
     if (state.gateReady) {
       if (previous !== 'PHASE6_COMPLETE') {
         this.emitHook('gateReady');
-        this.overlay.setSubtitle('Hai ánh đèn chạm ngưỡng cửa. Những đường vàng bắt đầu sáng lên...', 0);
+        this.overlay.clearSubtitle();
       }
     }
     this.renderUi(); this.updateHud(); this.persistState();
@@ -408,11 +421,13 @@ export class Phase6FestivalScene implements IScene {
 
   private beginSeparation(): void {
     this.separationElapsed = 0;
+    this.separationSubtitleAt = 0;
     this.isMoving = false;
     this.environment.beginSeparation();
     this.emitHook('separation');
     this.emitHook('separationCamera');
-    this.overlay.setSubtitle('Dòng người qua trước mặt. Ngọn đèn kia khuất dần...', 4000);
+    this.separationHudAt = performance.now() + 3100;
+    this.overlay.clearSubtitle();
   }
 
   private changeRoute(next: RouteId): void {
@@ -489,6 +504,8 @@ export class Phase6FestivalScene implements IScene {
       if (this.separationElapsed >= 1.55 && this.routeId === Phase6RouteId.shared) {
         this.togetherMode = 'SEPARATED_MODE'; this.togetherHelper.setEnabled(false);
         this.changeRoute(splitRoute(this.role));
+        // Let the empty space register after the crowd clears before naming it.
+        this.separationSubtitleAt = performance.now() + 650;
         this.updateHud();
         this.emitHook('separatedModeActive');
       }
@@ -502,12 +519,13 @@ export class Phase6FestivalScene implements IScene {
       this.progressT = Math.min(1, this.progressT + 2.1 * speedFactor * dt / route.getLength());
     }
     this.checkMilestones();
+    this.updateHud();
     this.remoteInterpolator.update(dt);
     this.companionProgressT = this.remoteInterpolator.currentProgressT;
     this.updateTransforms();
     if (this.reunionSubtitleAt && performance.now() >= this.reunionSubtitleAt) {
       this.reunionSubtitleAt = 0;
-      this.overlay.setSubtitle('Cuối cùng, hai ngọn đèn lại ở bên nhau.', 4500, true, 'top');
+      this.overlay.setSubtitle('À, đây rồi.', 1900, false, 'top', 'whisper');
     }
     this.broadcaster.update(dt, this.movementState());
     this.environment.setCrowdDensity(this.routeId === Phase6RouteId.shared ? this.progressT : 1,
@@ -523,6 +541,19 @@ export class Phase6FestivalScene implements IScene {
     this.playerLantern.update(dt, 0.04);
     if (this.remoteLantern.group.visible) this.remoteLantern.update(dt, 0.04);
     this.updateCamera(dt);
+    if (this.separationSubtitleAt && performance.now() >= this.separationSubtitleAt) {
+      this.separationSubtitleAt = 0;
+      if (this.routeId === Phase6RouteId.host || this.routeId === Phase6RouteId.guest) {
+        this.overlay.setSubtitle('Ánh đèn bên cạnh... đâu mất rồi?', 3300, false, 'top', 'whisper');
+      }
+    }
+    if (this.reunionTimingPending) {
+      const reunionAt = performance.now();
+      this.reunionTimingPending = false;
+      this.reunionHoldUntil = reunionAt + 5200;
+      this.reunionSubtitleAt = reunionAt + 2500;
+      this.reunionHudAt = reunionAt + 5200;
+    }
     if (this.phase6State.state.gateReady && this.onGrandPlaza && !this.handedOff) {
       this.gateHandoffElapsed += dt;
       if (this.gateHandoffElapsed >= 1.35) {
@@ -554,8 +585,8 @@ export class Phase6FestivalScene implements IScene {
       if (this.role === 'host') {
         if (this.phase6State.arriveAtSplitEnd(this.role)) this.broadcastSnapshot();
       } else void this.roomManager.sendEvent(NetworkEventType.GATE_DISCOVERED);
-      if (this.role === 'host') this.overlay.setSubtitle('Hai ánh đèn mới mở được lối vào đêm hội.', 5000);
-      else this.overlay.setSubtitle('Người Giữ Trăng chờ bên một lối vắng.', 5000);
+      if (this.role === 'host') this.overlay.clearSubtitle();
+      else this.overlay.setSubtitle('Ở cuối lối vắng, có người đứng đợi.', 5000);
     }
     if ((this.routeId === Phase6RouteId.hostRejoin || this.routeId === Phase6RouteId.guestRejoin) &&
       this.progressT >= 0.995 && !state.rejoinArrivals[this.role]) {
@@ -569,7 +600,7 @@ export class Phase6FestivalScene implements IScene {
       if (this.role === 'host') {
         if (this.phase6State.arriveAtGate(this.role)) this.broadcastSnapshot();
       } else void this.roomManager.sendEvent(NetworkEventType.INNER_GATE_PLAYER_READY);
-      if (!state.gateReady) this.overlay.setSubtitle('Hai ánh đèn mới mở được lối vào đêm hội.', 5000);
+      this.updateHud();
     }
   }
 
@@ -679,10 +710,25 @@ export class Phase6FestivalScene implements IScene {
 
   private updateHud(): void {
     if (!this.hud) return;
-    const title = this.phase6State.state.reunited ? '🏮 Hai ngọn đèn lại bên nhau' :
-      this.togetherMode === 'SEPARATED_MODE' ? '🏮 Tìm ánh đèn kia' : '🏮 Cùng đi sâu vào hội trăng';
-    const status = this.roomManager.hasCompanion ? (this.peerPhase6Ready ? 'Giữ W hoặc chuột để đi' : 'Đang chờ bạn cùng bước tiếp...')
-      : 'Đang chờ ngọn đèn kia trở lại...';
+    const now = performance.now();
+    const puzzleVisible = this.phase6State.state.stage === 'ELDER_PUZZLE' ||
+      this.phase6State.state.stage === 'MEMORY_PUZZLE';
+    const reunionQuiet = this.phase6State.state.reunited && now < this.reunionHudAt;
+    this.hud.style.visibility = reunionQuiet || puzzleVisible ? 'hidden' : 'visible';
+    if (reunionQuiet || puzzleVisible) return;
+    const title = this.phase6State.state.reunited ? 'Về phía cổng' :
+      this.togetherMode === 'SEPARATED_MODE' && now >= this.separationHudAt
+        ? 'Tìm người kia' : 'Theo lối hội';
+    const waitingAtGate = this.routeId === Phase6RouteId.final &&
+      this.progressT >= 0.995 && !this.phase6State.state.gateReady;
+    const moveHint = window.matchMedia('(pointer: coarse), (max-width: 680px)').matches
+      ? 'Chạm giữ để bước' : 'Giữ W hoặc chuột trái để bước';
+    const status = !this.roomManager.hasCompanion ? 'Đợi người kia quay lại màn chơi.' :
+      !this.peerPhase6Ready ? 'Đợi người kia cùng đi nhé.' :
+      waitingAtGate ? 'Đợi người kia tới.' : moveHint;
+    const copy = `${title}|${status}`;
+    if (copy === this.lastHudCopy) return;
+    this.lastHudCopy = copy;
     this.hud.replaceChildren(document.createTextNode(title));
     const small = document.createElement('small'); small.textContent = status; this.hud.appendChild(small);
   }

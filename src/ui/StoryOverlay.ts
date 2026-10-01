@@ -61,7 +61,7 @@ export class StoryOverlay {
         <button class="cinematic-btn primary-btn" style="display:none;"></button>
       </div>
 
-      <button class="audio-toggle-btn" title="Bật/Tắt âm thanh">
+      <button class="audio-toggle-btn" title="Tắt âm thanh">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
           <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
@@ -105,6 +105,7 @@ export class StoryOverlay {
     this.titleEl.textContent = mainTitle;
     const sub = this.container.querySelector('.cinematic-sub-title') as HTMLElement;
     sub.textContent = subTitle;
+    sub.hidden = !subTitle.trim();
     this.promptBtn.textContent = buttonText;
     this.promptBtn.style.display = 'inline-block';
     
@@ -119,7 +120,8 @@ export class StoryOverlay {
   }
 
   public setSubtitle(text: string, durationMs: number = 4000, priority = false,
-    placement: 'default' | 'top' = 'default') {
+    placement: 'default' | 'top' = 'default', tone: 'narrator' | 'dialogue' | 'whisper' = 'narrator') {
+    if (!text.trim()) { this.clearSubtitle(); return; }
     if (this.subtitleEl.textContent === text && this.subtitleEl.style.opacity === '1') return;
     const now = performance.now();
     // An urgent, actionable line must not vanish under the next location trigger.
@@ -131,12 +133,14 @@ export class StoryOverlay {
     this.pendingSubtitle = null;
     this.activePriority = priority;
     this.subtitleEl.parentElement?.classList.toggle('cinematic-subtitle-box--top', placement === 'top');
+    this.subtitleEl.parentElement?.classList.toggle('cinematic-subtitle-box--dialogue', tone === 'dialogue');
+    this.subtitleEl.parentElement?.classList.toggle('cinematic-subtitle-box--whisper', tone === 'whisper');
     if (this.subtitleTimer !== null) clearTimeout(this.subtitleTimer);
     if (this.revealTimer !== null) clearTimeout(this.revealTimer);
     this.subtitleEl.style.opacity = '0';
     this.revealTimer = window.setTimeout(() => {
       this.subtitleEl.textContent = text;
-      this.subtitleEl.style.opacity = '1';
+      this.subtitleEl.style.opacity = tone === 'whisper' ? '0.72' : '1';
       this.revealTimer = null;
     }, 150);
     if (durationMs <= 0) {
@@ -144,7 +148,8 @@ export class StoryOverlay {
       return;
     }
     const readingTime = Math.min(6500, Math.max(2600, text.trim().split(/\s+/).length * 285));
-    const displayMs = priority ? Math.max(durationMs, readingTime) : Math.max(2600, Math.min(durationMs, readingTime));
+    const displayMs = tone === 'whisper' ? durationMs :
+      priority ? Math.max(durationMs, readingTime) : Math.max(2600, Math.min(durationMs, readingTime));
     this.visibleUntil = now + displayMs;
     this.subtitleTimer = window.setTimeout(() => {
       this.subtitleEl.style.opacity = '0';
@@ -163,6 +168,8 @@ export class StoryOverlay {
     this.pendingSubtitle = null;
     this.activePriority = false;
     this.subtitleEl.parentElement?.classList.remove('cinematic-subtitle-box--top');
+    this.subtitleEl.parentElement?.classList.remove('cinematic-subtitle-box--dialogue');
+    this.subtitleEl.parentElement?.classList.remove('cinematic-subtitle-box--whisper');
     this.subtitleEl.style.opacity = '0';
     this.subtitleEl.textContent = '';
   }

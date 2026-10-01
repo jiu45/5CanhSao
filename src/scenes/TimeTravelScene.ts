@@ -146,9 +146,9 @@ export class TimeTravelScene implements IScene {
     this.dedication = null;
     audioManager.startMoonOpeningSoundscape();
     this.overlay.showStartScreen(
-      "KÝ ỨC ĐÈN ÔNG SAO",
+      "ÁNH ĐÈN VÀ ĐÊM TRĂNG",
       StoryConfig.cinematicPeriodTitle,
-      "Tua ngược thời gian ⏳",
+      "Theo ánh trăng",
       () => {
         audioManager.init();
         this.overlay.hideStartScreen();

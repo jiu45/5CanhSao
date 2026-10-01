@@ -134,7 +134,7 @@ export class LanternCraftingScene implements IScene {
     this.lantern.group.position.set(0, 1.38, 0.1);
     this.lantern.group.rotation.x = -Math.PI * .04;
     this.scene.add(this.lantern.group);
-    this.craftingUI.setFrameDescription(`Uốn nan thành ${LANTERN_NAMES[style].toLowerCase()}`);
+    this.craftingUI.setFrameDescription(`Đang làm ${LANTERN_NAMES[style].toLowerCase()}`);
     this.frameChoice = null;
     this.craftingUI.advanceStep();
   }
@@ -149,7 +149,7 @@ export class LanternCraftingScene implements IScene {
         audioManager.playBambooSnap();
         this.overlay.setSubtitle(this.selectedStyle === 'star'
           ? StoryConfig.craftingSubtitles.step1
-          : `Những thanh nan tre khép lại thành hình ${LANTERN_NAMES[this.selectedStyle!].replace('Đèn ', '').toLowerCase()}.`, 4000);
+          : `Nan tre đã thành hình ${LANTERN_NAMES[this.selectedStyle!].replace('Đèn ', '').toLowerCase()}.`, 4000);
         break;
       case 2:
         audioManager.playPaperRustle();
@@ -180,7 +180,7 @@ export class LanternCraftingScene implements IScene {
     this.targetCamLookAt.set(0, 1.38, 0.1);
 
     const t = window.setTimeout(() => {
-      this.overlay.showNextButton("Cầm đèn bước ra ngoài hiên 🚪", () => {
+      this.overlay.showNextButton("Mang đèn ra hiên", () => {
         this.overlay.hideNextButton();
         this.onComplete();
       });

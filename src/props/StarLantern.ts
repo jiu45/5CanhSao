@@ -49,8 +49,8 @@ export class StarLantern {
 
   constructor(style: LanternStyle = 'star') {
     this.style = style;
-    this.shapedCoreStrength = style === 'rabbit' ? .075 : .13;
-    this.candleIntensityScale = style === 'rabbit' ? .62 : 1;
+    this.shapedCoreStrength = style === 'rabbit' ? .22 : style === 'star' ? .13 : .55;
+    this.candleIntensityScale = style === 'rabbit' ? .75 : 1;
     this.group = new THREE.Group();
 
     this.bambooSkeletonGroup = new THREE.Group();
@@ -168,7 +168,7 @@ export class StarLantern {
       transparent: true, depthWrite: false, side: THREE.DoubleSide });
     this.shapedPaperMat = new THREE.MeshBasicMaterial({ map: paper,
       transparent: true, depthWrite: false, side: THREE.DoubleSide,
-      color: 0xd9c0aa, opacity: .94 });
+      color: 0xffffff, opacity: 1 });
     this.shapedCoreMat = new THREE.MeshBasicMaterial({ map: core,
       transparent: true, depthWrite: false, side: THREE.FrontSide,
       blending: THREE.AdditiveBlending, opacity: .04 });
@@ -479,7 +479,7 @@ export class StarLantern {
       this.candleLight.intensity = 2.8 * lightFactor * this.candleIntensityScale;
       this.paperRedMat.opacity = 0.85 * alpha;
       this.paperYellowMat.opacity = 0.85 * alpha;
-      if (this.shapedPaperMat) this.shapedPaperMat.opacity = .94 * alpha;
+      if (this.shapedPaperMat) this.shapedPaperMat.opacity = alpha;
       if (this.shapedCoreMat) this.shapedCoreMat.opacity = this.shapedCoreStrength * alpha;
       if (this.shapedGlowMat) this.shapedGlowMat.opacity = .7 * alpha;
       this.bambooMat.opacity = alpha;

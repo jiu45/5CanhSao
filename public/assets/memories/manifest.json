@@ -1,9 +1,9 @@
 {
   "cards": [
-    { "id": "moon_bamboo", "imageSrc": "/assets/memories/like.jpg", "caption": "Gửi like cho anh", "alt": "Trăng tròn phía trên rặng tre", "displayOrder": 1 },
-    { "id": "star_lantern", "imageSrc": "/assets/memories/thom_thom.jpg", "caption": "Mai muốn thơm thơm", "alt": "Đèn ông sao rực sáng trong sân", "displayOrder": 2 },
-    { "id": "lion_dance", "imageSrc": "/assets/memories/ho_con.png", "caption": "Hổ con gầm gầm", "alt": "Đầu lân và chiếc trống Trung Thu", "displayOrder": 3 },
-    { "id": "family_tray", "imageSrc": "/assets/memories/rau.jpg", "caption": "Bé con đeo râu", "alt": "Mâm cỗ Trung Thu với bánh và quả", "displayOrder": 4 }
+    { "id": "moon_bamboo", "imageSrc": "/assets/memories/like.jpg", "caption": "Gửi like cho anh", "alt": "Một cô gái giơ ngón tay cái cạnh chữ duyệt", "displayOrder": 1 },
+    { "id": "star_lantern", "imageSrc": "/assets/memories/thom_thom.jpg", "caption": "Mai muốn thơm thơm", "alt": "Một cô gái ngồi trên ghế, chạm tay lên má", "displayOrder": 2 },
+    { "id": "lion_dance", "imageSrc": "/assets/memories/ho_con.png", "caption": "Hổ con gầm gầm", "alt": "Một cô gái dùng bộ lọc mặt hổ", "displayOrder": 3 },
+    { "id": "family_tray", "imageSrc": "/assets/memories/rau.jpg", "caption": "Bé con đeo râu", "alt": "Một cô gái với bộ lọc râu trên mặt", "displayOrder": 4 }
   ],
   "rounds": [
     { "id": "memory_host", "viewerRole": "host", "targetCardId": "moon_bamboo", "choiceCardIds": ["lion_dance", "family_tray", "moon_bamboo", "star_lantern"] },

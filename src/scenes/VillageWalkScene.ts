@@ -659,10 +659,10 @@ export class VillageWalkScene implements IScene {
     this.shieldUiContainer = document.createElement('div');
     this.shieldUiContainer.className = 'cinematic-shield-ui';
     this.shieldUiContainer.innerHTML = `
-      <div class="village-movement-hint">Giữ W / ↑ hoặc chạm giữ đường để bước</div>
-      <button class="shield-lantern-btn" title="Giữ để lấy tay che chở ngọn nến">
+      <div class="village-movement-hint">Giữ W, ↑ hoặc chạm giữ lối đi để bước</div>
+      <button class="shield-lantern-btn" title="Giữ để che ngọn nến">
         <span class="shield-icon">✋</span>
-        <span class="shield-label">Che chở nến (Space)</span>
+        <span class="shield-label">Che nến (Space)</span>
       </button>
     `;
 
@@ -738,15 +738,15 @@ export class VillageWalkScene implements IScene {
     this.lantern.ignite();
     this.setShieldPrompt(false);
     this.overlay.hideNextButton();
-    this.overlay.setSubtitle('Bạn châm lại ngọn nến. Ánh sáng nhỏ trở về trong tay.', 3800, true);
+    this.overlay.clearSubtitle();
     audioManager.playCandleIgnite();
   }
 
   private setShieldPrompt(relight: boolean): void {
     const button = this.shieldUiContainer?.querySelector('.shield-lantern-btn') as HTMLButtonElement | null;
     const label = button?.querySelector('.shield-label');
-    if (label) label.textContent = relight ? 'Châm lại nến (Space)' : 'Che chở nến (Space)';
-    if (button) button.title = relight ? 'Chạm để châm lại ngọn nến' : 'Giữ để lấy tay che chở ngọn nến';
+    if (label) label.textContent = relight ? 'Châm lại nến (Space)' : 'Che nến (Space)';
+    if (button) button.title = relight ? 'Chạm để châm lại nến' : 'Giữ để che ngọn nến';
   }
 
   private onKeyUp(e: KeyboardEvent) {
@@ -835,9 +835,9 @@ export class VillageWalkScene implements IScene {
           this.currentSpeed = 0;
           this.lantern.extinguish();
           this.overlay.setSubtitle(hurried
-            ? 'Gió và bước chân quá vội làm nến tắt. Dừng lại, che ngọn đèn rồi châm nến nhé.'
-            : 'Cơn gió thổi tắt nến. Dừng lại, che ngọn đèn rồi châm nến nhé.', 6000, true);
-          this.overlay.showNextButton('Châm lại ngọn nến 🕯️', () => this.relightCandle());
+            ? 'Đi vội quá, nến tắt mất rồi.'
+            : 'Gió thổi tắt nến rồi.', 6000, true);
+          this.overlay.showNextButton('Châm lại nến', () => this.relightCandle());
         }
       }
     } else {
@@ -985,7 +985,7 @@ export class VillageWalkScene implements IScene {
       this.isPressingForward = false;
 
       // Show Action Button to join the festival and transition to Phase 3
-      this.overlay.showNextButton("Hòa vào đêm hội sân đình 🏮", () => {
+      this.overlay.showNextButton("Vào sân đình", () => {
         this.onComplete();
       });
     }

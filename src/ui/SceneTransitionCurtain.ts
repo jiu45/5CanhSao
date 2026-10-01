@@ -35,8 +35,7 @@ export class SceneTransitionCurtain {
 
   public async cover(mood: TransitionMood): Promise<void> {
     this.element.dataset.mood = mood;
-    this.caption.textContent = mood === 'gate' ? 'Cánh cổng đang hé sáng'
-      : mood === 'memory' ? 'Một ký ức đang mở ra' : 'Ánh trăng đang mở lối';
+    this.caption.textContent = '';
     this.element.style.visibility = 'visible';
     // Flush the transparent state without depending on requestAnimationFrame:
     // a companion's browser tab may be hidden and its rAF callbacks suspended.

@@ -89,7 +89,7 @@ export class Phase6StateController {
         this.state.stage = 'CROWD_ESCALATION';
         this.state.elderFeedback = null;
       } else {
-        this.state.elderFeedback = 'Ông mỉm cười: Hãy cùng nghĩ về điều ở trên cao.';
+        this.state.elderFeedback = 'Ông cười: ‘Thử nhìn lên xem?’';
         this.state.elderAnswers = { host: null, guest: null };
       }
     }
@@ -131,7 +131,7 @@ export class Phase6StateController {
         this.state.stage = 'REUNION_ROUTE';
       }
     } else {
-      this.state.memoryFeedback = 'Chưa phải ký ức ấy. Hãy kể thêm cho nhau nghe.';
+      this.state.memoryFeedback = 'Chưa đúng tấm ảnh. Kể thêm một chi tiết nhé.';
       this.state.memorySelections[role] = null;
     }
     this.changed(); return true;

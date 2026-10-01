@@ -89,6 +89,7 @@ export class CooperativeFestivalScene implements IScene {
   private arrivalTime: number = 0;
   private arrivalStartedAt: number = 0;
   private readonly arrivalDuration: number = 1.5;
+  private companionArrivalSubtitleAt = 0;
   private companionArrivalHoldUntil = 0;
   private arrivalGlow: THREE.PointLight;
   private remoteDepartureTimer: number = 0;
@@ -139,7 +140,7 @@ export class CooperativeFestivalScene implements IScene {
   private isElectricSwitchOn: boolean = false;
   private isRemoteSwitchOn: boolean = false;
   private darkZoneIntroShown: boolean = false;
-  private switchMonologueTimers: number[] = [];
+  private controlsHintUntil = 0;
 
   // UI HUD Elements & Electric Switch Overlay
   private hudContainerEl: HTMLElement | null = null;
@@ -229,7 +230,7 @@ export class CooperativeFestivalScene implements IScene {
       console.warn('[Phase 5] Memory photo preload:', error));
 
     this.overlay.setSubtitle(
-      this.isGuest ? 'Một ngọn đèn đang chờ bạn dưới ánh trăng...' : 'Một chiếc đèn thì hơi cô đơn cho một đêm Trung Thu.',
+      this.isGuest ? 'Có người đang đợi bạn dưới những dải đèn.' : 'Đi một mình đến đây cũng đủ lâu rồi.',
       5000
     );
 
@@ -405,13 +406,14 @@ export class CooperativeFestivalScene implements IScene {
       this.isRemoteDeparting = false;
       this.arrivalTime = 0;
       this.arrivalStartedAt = performance.now();
+      this.companionArrivalSubtitleAt = this.arrivalStartedAt + 2500;
       this.companionArrivalHoldUntil = this.arrivalStartedAt + 3000;
       this.remoteLantern.group.visible = true;
       this.remoteLantern.group.scale.setScalar(0.01);
 
       audioManager.playCompanionChime();
       audioManager.setScoreMood('together');
-      this.overlay.setSubtitle('Một ngọn đèn nữa đã tìm đến bên bạn.', 4000);
+      this.overlay.clearSubtitle();
       this.updateHudBadges();
       this.broadcastLocalState(1);
       if (this.isHost) void this.roomManager.sendEvent(NetworkEventType.PLAYER_READY,
@@ -427,6 +429,7 @@ export class CooperativeFestivalScene implements IScene {
     // 3. Companion Left Callback (Graceful Celestial Departure)
     this.roomManager.onCompanionLeft = () => {
       this.isRemoteSwitchOn = false;
+      this.companionArrivalSubtitleAt = 0;
       this.companionArrivalHoldUntil = 0;
       this.arrivalGlow.intensity = 0;
       this.remoteEndReached = false;
@@ -435,7 +438,7 @@ export class CooperativeFestivalScene implements IScene {
       this.updateInputMovementState();
       this.startGracefulRemoteDisconnect();
       audioManager.setScoreMood('present');
-      this.overlay.setSubtitle('Bạn đồng hành đã tạm rời cung đường hội...', 3500);
+      this.overlay.clearSubtitle();
       this.updateHudBadges();
     };
 
@@ -684,18 +687,26 @@ export class CooperativeFestivalScene implements IScene {
         this.updateInputMovementState();
       }
     }
+    if (this.companionArrivalSubtitleAt && performance.now() >= this.companionArrivalSubtitleAt) {
+      this.companionArrivalSubtitleAt = 0;
+      if (this.remoteLanternVisible && !this.isRemoteDeparting) {
+        this.overlay.setSubtitle('Đến rồi.', 2200, false, 'top', 'whisper');
+      }
+    }
     if (this.companionArrivalHoldUntil && performance.now() >= this.companionArrivalHoldUntil) {
       this.companionArrivalHoldUntil = 0;
       this.updateInputMovementState();
     }
 
     // Auto-fade controls hint once walking starts or destination is reached
-    if (this.controlsHintEl && (this.progressT > 0.03 || this.destinationReached)) {
+    if (this.controlsHintEl && (this.progressT > 0.03 || this.destinationReached) &&
+      performance.now() >= this.controlsHintUntil) {
       if (this.controlsHintEl.style.opacity !== '0' && this.controlsHintEl.style.display !== 'none') {
         this.controlsHintEl.style.transition = 'opacity 1.2s ease';
         this.controlsHintEl.style.opacity = '0';
         window.setTimeout(() => {
-          if (this.controlsHintEl && (this.progressT > 0.03 || this.destinationReached)) {
+          if (this.controlsHintEl && (this.progressT > 0.03 || this.destinationReached) &&
+            performance.now() >= this.controlsHintUntil && this.controlsHintEl.style.opacity === '0') {
             this.controlsHintEl.style.display = 'none';
           }
         }, 1200);
@@ -710,7 +721,7 @@ export class CooperativeFestivalScene implements IScene {
         this.currentSpeedFactor = tetherResult.speedFactor;
 
         if (tetherResult.promptMessage && tetherResult.isLeading) {
-          this.overlay.setSubtitle(tetherResult.promptMessage, 1500);
+          this.showControlHint(tetherResult.promptMessage, 1800);
         }
       } else {
         this.currentSpeedFactor = 1.0;
@@ -902,10 +913,7 @@ export class CooperativeFestivalScene implements IScene {
       if (this.progressT >= 0.20 && !this.darkZoneIntroShown) {
         this.darkZoneIntroShown = true;
         void this.roomManager.sendEvent(NetworkEventType.CHECKPOINT_REACHED, { checkpointId: 'DARK_ZONE' });
-        this.overlay.setSubtitle(
-          'Ngày xưa, một ngọn nến đủ soi lối. Đêm hội hôm nay, hãy cùng bật đèn LED trên hai chiếc đèn rồi bước tiếp.',
-          5600
-        );
+        this.overlay.setSubtitle('Ngày trước, phải che cho ngọn nến khỏi gió.', 4600);
         this.switchOverlay?.show();
       }
     } else {
@@ -969,7 +977,8 @@ export class CooperativeFestivalScene implements IScene {
     if (isLocal && switchOn) this.triggerSwitchMonologue();
     if (isLocal && !switchOn) this.clearSwitchMonologue();
     if (!wasBothLit && this.areBothLanternsLit()) {
-      this.overlay.setSubtitle('Tách. Hai ngọn đèn đã cùng sáng. Cùng bước tiếp nhé.', 3800);
+      this.overlay.clearSubtitle();
+      this.showControlHint('Cả hai đèn đã sáng. Đi tiếp thôi.', 3800);
     }
     this.updateInputMovementState();
 
@@ -1009,19 +1018,20 @@ export class CooperativeFestivalScene implements IScene {
   private triggerSwitchMonologue(): void {
     this.clearSwitchMonologue();
     if (!this.areBothLanternsLit()) {
-      this.overlay.setSubtitle('Tách. Đèn của bạn đã sáng. Còn chờ ánh đèn bên kia.', 4800);
+      this.showControlHint('Đèn của bạn đã sáng. Đợi người kia bật đèn nhé.', 4800);
     }
-    const t = window.setTimeout(() => {
-      this.overlay.clearSubtitle();
-    }, 4800);
-    this.switchMonologueTimers.push(t);
   }
 
   private clearSwitchMonologue(): void {
-    for (const timer of this.switchMonologueTimers) {
-      clearTimeout(timer);
-    }
-    this.switchMonologueTimers = [];
+    this.controlsHintUntil = 0;
+  }
+
+  private showControlHint(text: string, durationMs: number): void {
+    if (!this.controlsHintEl) return;
+    this.controlsHintUntil = performance.now() + durationMs;
+    this.controlsHintEl.textContent = text;
+    this.controlsHintEl.style.display = 'block';
+    this.controlsHintEl.style.opacity = '1';
   }
 
   // =========================================================================
@@ -1041,12 +1051,12 @@ export class CooperativeFestivalScene implements IScene {
   private showPhase5HandoffIfReady(): void {
     if (!this.destinationReached || this.handoffPresented) return;
     if (!this.remoteEndReached || !this.roomManager.hasCompanion) {
-      this.overlay.setSubtitle('Dừng lại một chút, chờ ngọn đèn bên cạnh.', 4000);
+      this.showControlHint('Đợi người kia tới nhé.', 4000);
       return;
     }
     this.handoffPresented = true;
-    this.overlay.setSubtitle('Hai ngọn đèn cùng đến dưới chân Tháp Đèn Kéo Quân.', 5500);
-    this.overlay.showNextButton('Đi sâu vào hội trăng', () => this.onComplete());
+    this.overlay.clearSubtitle();
+    this.overlay.showNextButton('Theo lối hội', () => this.onComplete());
   }
 
   public transferRoomManager(): RoomManager {
@@ -1254,11 +1264,11 @@ export class CooperativeFestivalScene implements IScene {
     this.hudContainerEl.innerHTML = `
       <div class="coop-badge-card">
         <div class="coop-room-row" id="coop-invite-actions">
-          <span>🏮 Một khoảng trống bên cạnh ánh đèn</span>
-          <button class="coop-btn-copy coop-btn-share">Mời người cùng rước đèn</button>
-          <button class="coop-btn-copy room-invite-link" data-testid="room-invite-link">Sao chép liên kết</button>
+          <span>Còn một chỗ bên cạnh</span>
+          <button class="coop-btn-copy coop-btn-share">Mời người đi cùng</button>
+          <button class="coop-btn-copy room-invite-link" data-testid="room-invite-link">Sao chép lời mời</button>
         </div>
-        <svg class="coop-wait-art" viewBox="0 0 360 84" role="img" aria-label="Chiếc đèn của em đang chờ chiếc đèn ông sao của anh">
+        <svg class="coop-wait-art" viewBox="0 0 360 84" role="img" aria-label="Chiếc đèn của bạn và một chỗ trống dành cho đèn ông sao">
           <defs><radialGradient id="coop-moon-glow"><stop stop-color="#e8e9e5" stop-opacity=".38"/><stop offset="1" stop-color="#e8e9e5" stop-opacity="0"/></radialGradient></defs>
           <rect width="360" height="84" fill="#0b1930"/>
           <path d="M0 70 Q90 39 180 69 T360 67 V84 H0Z" fill="#172f48"/>
@@ -1269,8 +1279,8 @@ export class CooperativeFestivalScene implements IScene {
           <g class="second-light"><path d="M257 28 L264 48 L286 48 L268 60 L275 79 L257 67 L239 79 L246 60 L228 48 L250 48Z" fill="#f8bd67" stroke="#fff2b0" stroke-width="2"/>
           <circle cx="257" cy="55" r="20" fill="#ffca6a" opacity=".16"/></g>
         </svg>
-        <input class="coop-invite-input" aria-label="Liên kết mời" readonly>
-        <div class="coop-status-text" id="coop-presence-status">Đang chờ một ngọn đèn khác...</div>
+        <input class="coop-invite-input" aria-label="Lời mời tham gia" readonly>
+        <div class="coop-status-text" id="coop-presence-status">Đợi người kia một chút...</div>
       </div>
     `;
     document.body.appendChild(this.hudContainerEl);
@@ -1289,7 +1299,7 @@ export class CooperativeFestivalScene implements IScene {
       copyBtn.addEventListener('click', async () => {
         if (navigator.share) {
           try {
-            await navigator.share({ title: 'Cùng rước đèn Trung Thu', url: inviteUrl });
+            await navigator.share({ title: 'Cùng đi rước đèn', url: inviteUrl });
             return;
           } catch { /* Share cancelled or unavailable; copy below. */ }
         }
@@ -1299,7 +1309,8 @@ export class CooperativeFestivalScene implements IScene {
 
     this.controlsHintEl = document.createElement('div');
     this.controlsHintEl.className = 'coop-controls-hint';
-    this.controlsHintEl.textContent = 'Giữ chuột trái hoặc phím W để nhấc đèn và cùng sánh bước';
+    this.controlsHintEl.textContent = window.matchMedia('(pointer: coarse), (max-width: 680px)').matches
+      ? 'Chạm giữ để bước cùng nhau' : 'Giữ W hoặc chuột trái để bước cùng nhau';
     document.body.appendChild(this.controlsHintEl);
 
     this.updateHudBadges();
@@ -1327,7 +1338,7 @@ export class CooperativeFestivalScene implements IScene {
     if (this.controlsHintEl) this.controlsHintEl.style.display = this.remoteLanternVisible ? 'block' : 'none';
     if (statusEl) {
       if (this.remoteLanternVisible) {
-        statusEl.textContent = 'Hai ngọn đèn đã tìm thấy nhau.';
+        statusEl.textContent = '';
         if (!this.hudFadeTimer) {
           this.hudFadeTimer = window.setTimeout(() => {
             if (this.hudContainerEl && this.remoteLanternVisible) {
@@ -1348,7 +1359,7 @@ export class CooperativeFestivalScene implements IScene {
         }
         this.hudContainerEl.style.display = 'flex';
         this.hudContainerEl.style.opacity = '1';
-        statusEl.textContent = 'Đang chờ một ngọn đèn khác...';
+        statusEl.textContent = 'Đợi người kia một chút...';
       }
     }
   }

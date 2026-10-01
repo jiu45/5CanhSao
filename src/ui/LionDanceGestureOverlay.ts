@@ -186,8 +186,8 @@ export class LionDanceGestureOverlay {
     // Gesture 1: Left to Right Arc (Lắc đầu sang phải)
     const gesture1: GestureTemplate = {
       id: 1,
-      title: "Điệu 1/3: Lắc đầu sang phải",
-      sub: "Vẫy bờm nghênh đón bạn bè — Vuốt vòng cung sang phải",
+      title: "Nhịp 1/3 · Sang phải",
+      sub: "Vuốt một vòng cung sang phải",
       getPoint: (t: number) => {
         const x = 0.28 + t * 0.44; // 0.28 -> 0.72
         const y = 0.58 - Math.sin(t * Math.PI) * 0.12;
@@ -205,8 +205,8 @@ export class LionDanceGestureOverlay {
     // Gesture 2: Right to Left Arc (Nghiêng đầu sang trái)
     const gesture2: GestureTemplate = {
       id: 2,
-      title: "Điệu 2/3: Nghiêng đầu sang trái",
-      sub: "Chớp mắt đùa vui dưới trăng — Vuốt vòng cung sang trái",
+      title: "Nhịp 2/3 · Sang trái",
+      sub: "Vuốt một vòng cung sang trái",
       getPoint: (t: number) => {
         const x = 0.72 - t * 0.44; // 0.72 -> 0.28
         const y = 0.56 - Math.sin(t * Math.PI) * 0.13;
@@ -224,8 +224,8 @@ export class LionDanceGestureOverlay {
     // Gesture 3: Grand Upward Leap Arc (Chồm lân vút lên)
     const gesture3: GestureTemplate = {
       id: 3,
-      title: "Điệu 3/3: Chồm lân vút lên",
-      sub: "Tung bay rực rỡ ngắm trăng rằm — Vuốt vút lên cao",
+      title: "Nhịp 3/3 · Vút lên",
+      sub: "Vuốt từ dưới lên",
       getPoint: (t: number) => {
         const x = 0.38 + t * 0.24; // 0.38 -> 0.62
         const y = 0.72 - t * 0.36; // 0.72 -> 0.36
@@ -399,7 +399,7 @@ export class LionDanceGestureOverlay {
     const completedIndex = this.currentGestureIndex;
 
     // Show big celebration feedback text
-    const cheers = ["CẮC - TÙNG! XUẤT SẮC!", "XOÈNG! RỰC RỠ!", "TÙNG DỒN! CHÚC PHÚC ĐÊM RẰM!"];
+    const cheers = ["Cắc–tùng!", "Xoèng!", "Tùng!"];
     this.feedbackEl.textContent = cheers[completedIndex % cheers.length];
     this.feedbackEl.style.opacity = '1';
     this.feedbackEl.style.transform = 'translate(-50%, -50%) scale(1.15)';

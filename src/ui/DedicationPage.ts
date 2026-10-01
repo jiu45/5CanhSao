@@ -16,7 +16,7 @@ export class DedicationPage {
   constructor() {
     this.root = document.createElement('section');
     this.root.className = 'dedication-page';
-    this.root.setAttribute('aria-label', 'Dành tặng maiixinh');
+    this.root.setAttribute('aria-label', 'dành tặng maiixinh');
     this.root.innerHTML = `<svg class="dedication-art" viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
       <defs>
         <radialGradient id="dedication-moon-glow"><stop stop-color="#f7dfaa" stop-opacity=".28"/><stop offset="1" stop-color="#f7dfaa" stop-opacity="0"/></radialGradient>
@@ -64,7 +64,7 @@ export class DedicationPage {
       </g>
     </svg>
     <div class="dedication-splash">
-      <p class="dedication-splash-line">Dành tặng <span>maiixinh</span></p>
+      <p class="dedication-splash-line">dành tặng <span>maiixinh</span></p>
     </div>`;
     this.line = this.root.querySelector('.dedication-splash-line')!;
     document.body.appendChild(this.root);

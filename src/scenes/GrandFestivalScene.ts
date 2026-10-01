@@ -150,7 +150,7 @@ export class GrandFestivalScene implements IScene {
     this.endCard = document.createElement('div');
     this.endCard.className = 'final-end-card';
     this.endCard.setAttribute('role', 'img');
-    this.endCard.setAttribute('aria-label', 'Hai chiếc đèn bên nhau dưới cùng một vầng trăng');
+    this.endCard.setAttribute('aria-label', 'Hai chiếc đèn đứng cạnh nhau dưới trăng');
     this.endCard.innerHTML = `
       <svg viewBox="0 0 1280 720" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
         <defs>
@@ -216,19 +216,19 @@ export class GrandFestivalScene implements IScene {
     this.pauseLetterButton = document.createElement('button');
     this.pauseLetterButton.className = 'final-letter-control';
     this.pauseLetterButton.type = 'button';
-    this.pauseLetterButton.textContent = 'Tạm dừng lời chúc';
+    this.pauseLetterButton.textContent = 'Dừng lại để đọc';
     this.pauseLetterButton.style.display = 'none';
     this.pauseLetterButton.addEventListener('click', () => {
       this.messagePaused = !this.messagePaused;
       audioManager.pauseScore(this.messagePaused);
       this.pauseLetterButton.textContent = this.messagePaused
-        ? 'Tiếp tục lời chúc' : 'Tạm dừng lời chúc';
+        ? 'Đọc tiếp' : 'Dừng lại để đọc';
     });
     document.body.appendChild(this.pauseLetterButton);
     this.replayLetterButton = document.createElement('button');
     this.replayLetterButton.className = 'final-letter-replay';
     this.replayLetterButton.type = 'button';
-    this.replayLetterButton.textContent = 'Đọc lại lời chúc ✉';
+    this.replayLetterButton.textContent = 'Đọc lại lá thư';
     this.replayLetterButton.style.display = 'none';
     this.replayLetterButton.addEventListener('click', () => {
       this.letterSheet.style.display = 'flex';
@@ -243,11 +243,11 @@ export class GrandFestivalScene implements IScene {
     heading.textContent = 'Dưới cùng một vầng trăng';
     const scrollHint = document.createElement('div');
     scrollHint.className = 'final-letter-scroll-hint';
-    scrollHint.textContent = 'Cuộn xuống để đọc trọn lá thư ↓';
+    scrollHint.textContent = 'Cuộn xuống để đọc tiếp ↓';
     const message = document.createElement('p');
     message.textContent = finalWishText.trim();
     const close = document.createElement('button');
-    close.type = 'button'; close.textContent = 'Khép lá thư';
+    close.type = 'button'; close.textContent = 'Khép thư';
     close.addEventListener('click', () => {
       this.letterSheet.style.display = 'none';
     });

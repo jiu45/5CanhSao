@@ -9,10 +9,10 @@ export class LanternFrameChoice {
     this.root = document.createElement('div');
     this.root.className = 'lantern-frame-choice';
     this.root.setAttribute('role', 'dialog');
-    this.root.setAttribute('aria-label', 'Chọn khung đèn');
+    this.root.setAttribute('aria-label', 'Chọn dáng đèn');
     const sheet = document.createElement('div'); sheet.className = 'lantern-frame-sheet';
     const prompt = document.createElement('p'); prompt.className = 'lantern-frame-prompt';
-    prompt.textContent = 'Nan tre mềm trong tay. Đêm nay, bạn muốn uốn thành chiếc đèn nào?';
+    prompt.textContent = 'Đêm nay, bạn muốn làm chiếc đèn nào?';
     const grid = document.createElement('div'); grid.className = 'lantern-frame-grid';
     LANTERN_STYLES.forEach(style => {
       const button = document.createElement('button');
@@ -28,7 +28,7 @@ export class LanternFrameChoice {
       grid.appendChild(button);
     });
     const hint = document.createElement('small');
-    hint.textContent = 'Chạm vào một chiếc khung để bắt đầu làm đèn.';
+    hint.textContent = 'Chọn một chiếc khung.';
     sheet.append(prompt, grid, hint); this.root.appendChild(sheet);
     document.body.appendChild(this.root);
     requestAnimationFrame(() => this.root.classList.add('visible'));
